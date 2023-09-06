@@ -76,7 +76,8 @@ ABC_NAMESPACE_IMPL_START
 
 /* Global Var for Probe Point Counter  
 int nValidProbePoint;
-int nAvgKeyCount;
+int nValidNodes;
+int nAvgKeyCount; */
 /* End Global Var for Probe Point Counter */
 
 // CLAP Attack wrapper function -- entry point to CLAP
@@ -99,7 +100,7 @@ int ClapAttack_ClapAttackAbc(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int
 }
 
 int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff) {
-  int i, j=0, NumKeys, KeyIndex, MaxKeysConsidered, KeysFound, MaxNodesConsidered;
+  int i, j=0, NumKeys, KeyIndex, MaxKeysConsidered, MaxNodesConsidered;
   Abc_Ntk_t *pNtk, *pCurKeyCnf; 
   Abc_Obj_t *pPi, *pNode;
   struct BSI_KeyData_t GlobalBsiKeys;
@@ -113,7 +114,8 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
 
   /*  Global Var for Probe Point Counter 
   nValidProbePoint = 0;
-  nAvgKeyCount = 0;  
+  nValidNodes = 0;
+  //nAvgKeyCount = 0;  */
   /* End  Global Var for Probe Point Counter */
 
   //
@@ -189,7 +191,7 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
       for ( MaxKeysConsidered = 1; MaxKeysConsidered < keysConsideredCutoff; MaxKeysConsidered++ ) {
 
 	// How many keys are we currently considering?
-	printf("Set Number of Keys considered to: %d\n\n", MaxKeysConsidered);
+	//printf("Set Number of Keys considered to: %d\n\n", MaxKeysConsidered);
 	GlobalBsiKeys.Updated = 1;
 	fConsiderAll = 1;
 
@@ -209,11 +211,11 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
 	      
 	      // Do we know this key index?
 	      if( GlobalBsiKeys.KeyValue[KeyIndex] < 0 ) {
-		pCurKeyCnf = NULL;
-		NumProbes = 0;
+		      pCurKeyCnf = NULL;
+		      NumProbes = 0;
 
-		// Start traversal of tree -- any new key inference will set the updated variable and restart new traversal
-		ClapAttack_TraversalRecursiveHeuristic( pNtk, pPi, &GlobalBsiKeys, MaxKeysConsidered, &GlobalBsiKeys.pKeyCnf, &pSatMiterList, &NumProbes, MaxProbes );
+		      // Start traversal of tree -- any new key inference will set the updated variable and restart new traversal
+		      ClapAttack_TraversalRecursiveHeuristic( pNtk, pPi, &GlobalBsiKeys, MaxKeysConsidered, &GlobalBsiKeys.pKeyCnf, &pSatMiterList, &NumProbes, MaxProbes );
 	      }
 	    }
 	  }
@@ -303,7 +305,7 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
       /* End Probe Point Counter */
 
       // INFO print -- How many keys are we considering?
-      printf("Set Number of Keys considered to: %d\n\n", MaxKeysConsidered);
+      //printf("Set Number of Keys considered to: %d\n\n", MaxKeysConsidered);
       GlobalBsiKeys.Updated = 1;
 
       // did we get any new key leakage? If so, see if this allows further leakage to be extracted now.      
@@ -343,27 +345,47 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
   
   // Append known keys into partial key CNF for finalized circuit formulation
   //ClapAttack_WriteMiterVerilog(GlobalBsiKeys.pKeyCnf, "global_keystore.v");
-  ClapAttack_GenSatAttackConfig( pNtk, &GlobalBsiKeys, pOutFile );
+  //ClapAttack_GenSatAttackConfig( pNtk, &GlobalBsiKeys, pOutFile );
   
 
   // Print the final key value inferred from the attack.
-  printf("KeyStore is now: {");
+  /*printf("KeyStore is now: {");
   KeysFound = GlobalBsiKeys.NumKeys;
   for (i=0; i<GlobalBsiKeys.NumKeys; i++){
     if ( GlobalBsiKeys.KeyValue[i] == -1)
       KeysFound--;
     printf("%d, ", GlobalBsiKeys.KeyValue[i]);
-  }
+  }*/
   printf("}\n\n");
 
-  printf("We found %d of %d total keys using %d probes\n", KeysFound, GlobalBsiKeys.NumKeys, TotalProbes );
+  //printf("We found %d of %d total keys using %d probes\n", KeysFound, GlobalBsiKeys.NumKeys, TotalProbes );
+  int TotalNumNodes = 0;
+  int NodesLeaking = 0;
+  printf("Node Info:\n");
+  Abc_NtkForEachNode( pNtk, pNode, i )
+  {
+    printf("Node %s:\t", Abc_ObjName(pNode));
+    if(pNode->fMarkC) //If the node was visited (Leaks Key Information)
+    {
+      printf("Leaks = true,\t");
+      NodesLeaking++;
+    }
+    else
+    {
+      printf("Leaks = false,\t");
+    }
+    printf("Fanin = %d,\t", Abc_ObjFaninNum(pNode));
+    printf("Fanout = %d,\t", Abc_ObjFanoutNum(pNode));
+    printf("Level = %d\n", Abc_ObjLevel(pNode));
+    //Abc_ObjPrint(file, pNode); //This function can print the node to a file!
+    TotalNumNodes++;
+    pNode->fMarkC = 0; // Reset markc so we can terminate without seg-fault
+  }
+  printf("\nNodes leaking key information: %d\n", NodesLeaking);
+  printf("Total nodes in circuit: %d\n", TotalNumNodes);
 
   // We are done -- cleanup and exit
   free( GlobalBsiKeys.KeyValue );
-  
-  // Reset markc so we can terminate without seg-fault
-  Abc_NtkForEachNode( pNtk, pNode, i )
-    pNode->fMarkC = 0;
     
   return 1;
 }
@@ -862,18 +884,18 @@ void ClapAttack_TraversalRecursiveHeuristic( Abc_Ntk_t * pNtk, Abc_Obj_t * pCurN
       
       KeyNameTmp = (char **)malloc( sizeof(char *) * MaxKeysConsidered);
       for (k=0; k<MaxKeysConsidered; k++) {
-	KeyNameTmp[k] = (char *)malloc( sizeof(char) * 100);
+	      KeyNameTmp[k] = (char *)malloc( sizeof(char) * 100);
       }
       
       // Check to make sure were not lookign at a PO. If so,
       // don't bother pursuing the fanout.
       if ( Abc_ObjIsCo(pNode) ) {
-	///printf("This node is a primary output. Done with fanout.\n");       
-	for(k=0; k<MaxKeysConsidered; k++)
-	  free(KeyNameTmp[k]);
-	free(KeyNameTmp);
-	free(ppNodeFreeList);
-	continue;
+	      ///printf("This node is a primary output. Done with fanout.\n");       
+	      for(k=0; k<MaxKeysConsidered; k++)
+	        free(KeyNameTmp[k]);
+	      free(KeyNameTmp);
+	      free(ppNodeFreeList);
+	      continue;
       }
       
       // Check supports ... if only one is an unknown key,
@@ -888,59 +910,58 @@ void ClapAttack_TraversalRecursiveHeuristic( Abc_Ntk_t * pNtk, Abc_Obj_t * pCurN
 
       // Count the key inputs in the cone. If there are too many, ignore the node and halt traversal.
       Abc_NtkForEachPi( pNtkCone, pPi, j ) {
-	// Are we looking at a key input?
-	if( strstr(Abc_ObjName(pPi), "key") ) {
-	  if ( !ClapAttack_SetKnownKeys( pNtkCone, pPi, pGlobalBsiKeys ) ) {
-	    if( NumKeys < MaxKeysConsidered )
-	      strcpy(KeyNameTmp[NumKeys], Abc_ObjName(pPi) );
-	    NumKeys++;
-	  } else {
-	    ppNodeFreeList[NumKnownKeys] = pPi;
-	    NumKnownKeys++;	    
-	  }
-	}
+	      // Are we looking at a key input?
+	      if( strstr(Abc_ObjName(pPi), "key") ) {
+	        if ( !ClapAttack_SetKnownKeys( pNtkCone, pPi, pGlobalBsiKeys ) ) {
+	          if( NumKeys < MaxKeysConsidered )
+	            strcpy(KeyNameTmp[NumKeys], Abc_ObjName(pPi) );
+	          NumKeys++;
+	        } else {
+	          ppNodeFreeList[NumKnownKeys] = pPi;
+	          NumKnownKeys++;	    
+	        }
+	      }
       }
       
       // Delete known keys from cone.
       if ( NumKnownKeys )
-	ClapAttack_DelKnownKeys( ppNodeFreeList, NumKnownKeys );
+	      ClapAttack_DelKnownKeys( ppNodeFreeList, NumKnownKeys );
 
       // Can we evaluate this node (i.e. does it have the currently considered number of keys as input)?
       if ( (NumKeys == MaxKeysConsidered) && NumKeys ) {
+        // Generate the logical miter to infer whether key leakage occurs at this node.
+        //printf("Evaluating node %s\n", Abc_ObjName(pNode) );
+        MiterStatus = ClapAttack_MakeMiterHeuristic(pNtkCone, *ppCurKeyCnf, &pNtkMiter );
 
-	// Generate the logical miter to infer whether key leakage occurs at this node.
-	printf("Evaluating node %s\n", Abc_ObjName(pNode) );	  
-	MiterStatus = ClapAttack_MakeMiterHeuristic(pNtkCone, *ppCurKeyCnf, &pNtkMiter );
+	      // Did the miter generate successfully?
+        if (!MiterStatus) {
+          
+          // Run SAT on the generated miter to find sensitizing inputs
+          SatStatus = ClapAttack_RunSat(pNtkMiter);
 
-	// Did the miter generate successfully?
-	if (!MiterStatus) {
-	  
-	  // Run SAT on the generated miter to find sensitizing inputs
-	  SatStatus = ClapAttack_RunSat(pNtkMiter);
+          // Did SAT return sensitizing inputs?
+          if (!SatStatus) {
+            // Update SAT node list with new Sat miter
+            pNode->fMarkC = 1; //Node leaks key information
+            (*pNumProbes)++;
+            //ClapAttack_UpdateSatMiterList( ppSatMiterList, &pNode, pNtkMiter, NumKeys, KeyNameTmp, 1, 1.0/(1<<(MaxKeysConsidered-1)), pNtkMiter->pModel );
+          } else {
+            // Node is UNSAT, but has the right number of keys... It's useless so mark it
+            pNode->fMarkC = 1;
+          }
 
-	  // Did SAT return sensitizing inputs?
-	  if (!SatStatus) {
-	    // Update SAT node list with new Sat miter
-	    pNode->fMarkC = 1;
-	    (*pNumProbes)++;
-	    ClapAttack_UpdateSatMiterList( ppSatMiterList, &pNode, pNtkMiter, NumKeys, KeyNameTmp, 1, 1.0/(1<<(MaxKeysConsidered-1)), pNtkMiter->pModel );
-	  } else {
-	    // Node is UNSAT, but has the right number of keys... It's useless so mark it
-	    pNode->fMarkC = 1;
-	  }
+        } else {
+          printf("Mitering failed. Proceed.\n");
+        }
 
-	} else {
-	  printf("Mitering failed. Proceed.\n");
-	}
-
-	// Cleanup
-	Abc_NtkDelete( pNtkMiter );
+        // Cleanup
+        Abc_NtkDelete( pNtkMiter );
       }
 
       // Cleanup
       Abc_NtkDelete( pNtkCone );
       for(k=0; k<MaxKeysConsidered; k++)
-	free(KeyNameTmp[k]);
+        free(KeyNameTmp[k]);
       free(KeyNameTmp);
       free(ppNodeFreeList);
     }
