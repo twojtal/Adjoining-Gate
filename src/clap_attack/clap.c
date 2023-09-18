@@ -104,7 +104,6 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
   Abc_Ntk_t *pNtk, *pCurKeyCnf; 
   Abc_Obj_t *pPi, *pNode;
   struct BSI_KeyData_t GlobalBsiKeys;
-  int RunHeuristic = alg;
   int TotalProbes = 0;
   int fConsiderAll = 0;
   int NumProbes, MaxProbes;
@@ -141,20 +140,11 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
   }  
 
   // Print out all configurable program state for user.
-  printf("\nCLAP ATTACK CONFIGURATION:\n");
-  printf("Physical attack algorithm (0: Fixed EOFM Probe, 1: Multinode Probe): %d\n", alg);
-  printf("Keys Considered Cutoff (i.e. max fanin keys for node): %d\n", keysConsideredCutoff);
-  printf("Keys Eliminated Cutoff (minumum portion of keyspace that must be eliminated to probe -- MULTI-NODE PROBING ONLY!): %f\n", keyElimCutoff);
-    
-  // Print the oracle key value.
-  printf("Correct Oracle Key: {");
-  for (i=0; i<str_length; i++){
-    printf("%d, ", pOracleKey[i]);
-  }
-  printf("}\n");
+  printf("\nLEAKAGE ANALYSIS CONFIGURATION:\n");
+  printf("Physical attack algorithm: Multinode Probe");
 
   printf("Output File for Logical Attack: %s\n", pOutFile);
-  printf("\nLaunching CLAP Attack...\n\n");
+  printf("\nLaunching Leakage Analysis...\n\n");
   
   // Parameter for the maximum keys inputs that can be fanned into a node before ignoring it.
   // DEBUG: print information about the network
@@ -181,7 +171,6 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
 
   // Goal: Iterate through each PI. Identify list of keys.
   // NOTE -- THIS RUNS ALGORITHM 2, MULTI-NODE PROBING.
-  if(RunHeuristic) {
 
     // Infinite loop -- break when you run out of probe-able nodes
     while (1) {
@@ -291,57 +280,6 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
 	break;
       }
     }
-  }
-
-  // NOTE -- THIS RUNS ALGORITHM 1, FIXED EOFM PROBE.
-  else {
-    
-    // Starting from nodes with a single key input in their fan-in -- look for sensitizing inputs/nodes to probe.
-    // Iteratively consider more key inputs until cutoff is reached.
-    for ( MaxKeysConsidered = 1; MaxKeysConsidered  < keysConsideredCutoff; MaxKeysConsidered++ ) {
-
-      /* Probe Point Counter  
-      MaxKeysConsidered = KeysConsideredCutoff-1;
-      /* End Probe Point Counter */
-
-      // INFO print -- How many keys are we considering?
-      //printf("Set Number of Keys considered to: %d\n\n", MaxKeysConsidered);
-      GlobalBsiKeys.Updated = 1;
-
-      // did we get any new key leakage? If so, see if this allows further leakage to be extracted now.      
-      while ( GlobalBsiKeys.Updated ) {
-	
-	// Set the update var to 0. IF we change our keystore, set it back to 1 and re-loop over the tree.
-	GlobalBsiKeys.Updated = 0;
-	MaxNodesConsidered = 1;
-
-	// Iterate through fan-out of each key input looking for possible key leakage.
-	Abc_NtkForEachPi( pNtk, pPi, i ) {
-	  
-	  // Are we looking at a key input? And do we know it?-- If so, begin fanout
-	  if( strstr(Abc_ObjName(pPi), "key") ) {
-	    
-	    // Get key index
-	    KeyIndex = (int) strtol(&((Abc_ObjName(pPi))[8]), (char **)NULL, 10);
-	    
-	    // Do we know this key index?
-	    if( GlobalBsiKeys.KeyValue[KeyIndex] < 0 ) {
-	      //printf("Currently working on fanout for key index: %d\n", KeyIndex);
-	      pCurKeyCnf = NULL;
-	      
-	      // Recursively traverse from the current key inputs fan-out
-	      ClapAttack_TraversalRecursive( pNtk, pPi, &GlobalBsiKeys, pOracleKey, MaxKeysConsidered, &pCurKeyCnf, &TotalProbes );
-	    }
-	  }
-	}
-      }
-
-      /* Probe Point Counter  
-      printf("There are %d Probe Points, Averaging %f key inputs \n\n", nValidProbePoint, ((float)nAvgKeyCount)/((float)nValidProbePoint));
-      /* End Probe Point Counter */
-      
-    }
-  }
   
   // Append known keys into partial key CNF for finalized circuit formulation
   //ClapAttack_WriteMiterVerilog(GlobalBsiKeys.pKeyCnf, "global_keystore.v");

@@ -4,17 +4,20 @@
 ABC_NAMESPACE_IMPL_START
 
 // Declarations
-static int ClapAttack_CommandClapAttack(Abc_Frame_t * pAbc, int argc, int **argv);
+static int ClapAttack_ScanLeakage(Abc_Frame_t * pAbc, int argc, int **argv);
 
 // Function Definitions
 void ClapAttack_Init(Abc_Frame_t * pAbc) {
-  Cmd_CommandAdd(pAbc, "Various", "clap", ClapAttack_CommandClapAttack, 0);
+  Cmd_CommandAdd(pAbc, "Various", "scan", ClapAttack_ScanLeakage, 0);
+  Cmd_CommandAdd(pAbc, "Various", "add", ClapAttack_ScanLeakage, 0);
+  Cmd_CommandAdd(pAbc, "Various", "rem", ClapAttack_ScanLeakage, 0);
+  Cmd_CommandAdd(pAbc, "Various", "mov", ClapAttack_ScanLeakage, 0);
 }
 
-int ClapAttack_CommandClapAttack(Abc_Frame_t * pAbc, int argc, int ** argv) {
+int ClapAttack_ScanLeakage(Abc_Frame_t * pAbc, int argc, int ** argv) {
   int fVerbose;
   int c, result, alg=0, keysConsideredCutoff=7;
-  char * pKey = NULL, * pOutFile = NULL;
+  char * pKey = "0000010010001101111101010111101000000010010011110010010110111110011110000010100110110111", * pOutFile = NULL; //Hard-code the key in
   float keyElimCutoff = 0.006125;
   
   // set defaults
