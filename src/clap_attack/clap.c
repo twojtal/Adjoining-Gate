@@ -34,7 +34,7 @@ struct SatMiterList {
 
 int ClapAttack_ClapAttackAbc(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff);
 int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff);
-void ClapAttack_TraversalRecursive( Abc_Ntk_t * pNtk, Abc_Obj_t * pCurNode, struct BSI_KeyData_t * pGlobalBsiKeys, int *pOracleKey, int MaxKeysConsidered, Abc_Ntk_t ** ppCurKeyCnf, int *pTotalProbes );
+int AdjoiningGate_RemoveNode(Abc_Frame_t * pAbc, char * delNode);
 void ClapAttack_TraversalRecursiveHeuristic( Abc_Ntk_t * pNtk, Abc_Obj_t * pCurNode, struct BSI_KeyData_t * pGlobalBsiKeys, int MaxKeysConsidered, Abc_Ntk_t ** ppCurKeyCnf, struct SatMiterList ** ppSatMiterList, int *pNumProbes, int MaxProbes );
 void ClapAttack_CombineMitersHeuristic( struct SatMiterList ** ppSatMiterListOld, struct SatMiterList ** ppSatMiterListNew, int * pMaxNodesConsidered, int MaxKeysConsidered, int MaxPiNum, int fConsiderAll );
 void ClapAttack_InterpretDiHeuristic(Abc_Ntk_t *pNtk, Abc_Ntk_t *pNtkMiter, int *pModel, int NumKeys, int *KeyWithFreq, int *KeyNoFreq, int **ppDiFull);
@@ -328,260 +328,33 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
   return 1;
 }
 
-// Traverse the network looking for probe-able nodes. Note, this is used for the fixed EOFM probe case -- Multinode probing is explored in
-// the heuristic version of this function below.
-void ClapAttack_TraversalRecursive( Abc_Ntk_t * pNtk, Abc_Obj_t * pCurNode, struct BSI_KeyData_t * pGlobalBsiKeys, int *pOracleKey, int MaxKeysConsidered, Abc_Ntk_t ** ppCurKeyCnf, int *pTotalProbes ) {
-  int *pFullDi;
-  int i, j, k, m, SatStatus, MiterStatus, NumKeys, NumKnownKeys, *KeyWithFreq, *KeyNoFreq, *WrongKeyValue, KeyValue=0, PartialKeySatStatus, fCurKeyCnfAlloc;
-  Abc_Ntk_t *pNtkCone, *pNtkMiter, *pInferPartialKeyMiter, *ntkTmp;
-  Abc_Obj_t * pNode, * pPi, * pKey, **ppNodeFreeList;
-  char ** KeyNameTmp;
-  
-  // Initialize partial key info to NULL
-  fCurKeyCnfAlloc = 0;
-  NumKeys = 0;
-  
-  // Goal: For each PI that is a key, follow fanout until it intersects with unknown key.
-  Abc_ObjForEachFanout( pCurNode, pNode, i ) {
+// Deletes a node from the network
+int AdjoiningGate_RemoveNode(Abc_Frame_t * pAbc, char * delNode)
+{
+  Abc_Ntk_t *pNtk;
+  Abc_Obj_t *pNode;
+  int i;
 
-    // Have we visited this node before?
-    if (!pNode->fMarkC) {
+  // Get the network that is read into ABC
+  pNtk = Abc_FrameReadNtk(pAbc);
 
-      // Initialzie free list to the number of keys present...
-      ppNodeFreeList = (Abc_Obj_t **)malloc( sizeof(Abc_Obj_t *) * pGlobalBsiKeys->NumKeys);
-      
-      KeyNameTmp = (char **)malloc( sizeof(char *) * MaxKeysConsidered);
-      for (k=0; k<MaxKeysConsidered; k++) {
-	KeyNameTmp[k] = (char *)malloc( sizeof(char) * 100);
-      }
-      
-      // Check to make sure were not lookign at a PO. If so,
-      // don't bother pursuing the fanout.
-      if ( Abc_ObjIsCo(pNode) ) {
-	for(k=0; k<MaxKeysConsidered; k++)
-	  free(KeyNameTmp[k]);
-	free(KeyNameTmp);
-	free(ppNodeFreeList);
-	continue;
-      }
-      
-      // Check supports ... if only one is an unknown key,
-      // process it and continue fanout
-      ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode);
-      
-      // Loop over the miter generation phase until SAT fails
-      do {
-	NumKeys = 0;
-	NumKnownKeys = 0;
+  if(pNtk == NULL) {
+    Abc_Print(-1, "AdjoiningGate_RemoveNode: Getting the target network has failed.\n");
+    return 0;
+  }
 
-	SatStatus = 1;
-	MiterStatus = 1;
-
-	Abc_NtkForEachPi( pNtkCone, pPi, j ) {
-
-	  // Are we looking at a key input?
-	  if( strstr(Abc_ObjName(pPi), "key") ) {
-	    if ( !ClapAttack_SetKnownKeys( pNtkCone, pPi, pGlobalBsiKeys ) ) {
-	      if( NumKeys < MaxKeysConsidered )
-		strcpy(KeyNameTmp[NumKeys], Abc_ObjName(pPi) );
-	      NumKeys++;
-	      //printf("Keyname: %s, KeyNum: %d\n",  Abc_ObjName(pPi), NumKeys);
-	    } else {
-	      ppNodeFreeList[NumKnownKeys] = pPi;
-	      NumKnownKeys++;	    
-	    }
-	  }
-	}
-	
-	// Delete known keys from cone.
-	if ( NumKnownKeys )
-	  ClapAttack_DelKnownKeys( ppNodeFreeList, NumKnownKeys );
-
-	// We're processing the node. Mark it so we don't do this again.
-	// If it fails here, there is no information we can ever gain
-	if ( (NumKeys <= MaxKeysConsidered) )
-	  pNode->fMarkC = 1;
-	
-	if ( (NumKeys <= MaxKeysConsidered) && NumKeys ) {
-
-	  printf("Evaluating node %s\n", Abc_ObjName(pNode) );	  
-	  printf("The number of keys is: %d\n", NumKeys);	  
-	  printf("Generating miter circuit.\n");       
-
-	  // Generate miter to determine if key info leaks
-	  MiterStatus = ClapAttack_MakeMiterHeuristic( pNtkCone, *ppCurKeyCnf, &pNtkMiter );
-
-	  // Did we successfully construct the miter?
-	  if (!MiterStatus) {
-
-	    // Run SAT on the miter to discover sensitizing inputs.
-	    printf("Running SAT on Miter circuit.\n");       
-	    SatStatus = ClapAttack_RunSat(pNtkMiter);
-
-	    // Are there sensitizing inputs for this miter?
-	    if (!SatStatus) {
-
-	      /* Probe Point Counter  
-	      nValidProbePoint++;
-	      nAvgKeyCount = nAvgKeyCount + NumKeys;
-	      printf("We found a valid probe point: %s with %d keys\n", Abc_ObjName(pNode), NumKeys);
-	      /* End Probe Point Counter */
-	      
-	      /* Begin Probe Point Counter Comment */  
-	      // Debug printing
-	      printf("SAT successfully located a key for keys:  ");
-	      for (k=0; k<NumKeys; k++)
-		printf("%s ", KeyNameTmp[k]);
-	      printf("\n\n");
-	      
-	      // Malloc key values from SAT to infer from
-	      KeyWithFreq = (int *)malloc( sizeof(int) * NumKeys );
-	      KeyNoFreq = (int *)malloc( sizeof(int) * NumKeys );
-	      
-	      ClapAttack_InterpretDiHeuristic(pNtkCone, pNtkMiter, pNtkMiter->pModel, NumKeys, KeyWithFreq, KeyNoFreq, &pFullDi);
-	      
-	      // Oracle testing. Comment out with real probe.
-	      ClapAttack_OracleSetConeKeys(pNtkCone, pFullDi, pOracleKey);
-
-	      // Increase probe count by 1
-	      (*pTotalProbes)++;
-
-	      // Determine which keys we can eliminate based on simulated probe-ing of keyed oracle.
-	      // Comment out for real-probeing case.
-	      WrongKeyValue = (int *)malloc( sizeof(int) * NumKeys);
-	      ClapAttack_OracleSimDi(pNtkCone, pFullDi, NumKeys, KeyWithFreq, KeyNoFreq, WrongKeyValue);
-
-	      // Debug print
-	      printf("Wrong KeyValue: ");
-	      for (k=0; k<NumKeys; k++)
-		printf(" %d", WrongKeyValue[k]);
-	      printf("\n\n");
-	      
-	      // Initialize partial key logic if it doesnt exist
-	      // Otherwise update it...
-	      if( NumKeys > 1 ) {
-		if ( !(*ppCurKeyCnf) ) {
-		  ClapAttack_InitKeyCnf( ppCurKeyCnf, NumKeys, WrongKeyValue, KeyNameTmp );
-		  fCurKeyCnfAlloc = 1;
-		} else {
-		  ClapAttack_UpdateKeyCnf( ppCurKeyCnf, NumKeys, WrongKeyValue, KeyNameTmp );
-		}
-	      }
-	      
-	      // Short term hack to handle case wehre key is of length 1
-	      if ( NumKeys == 1) {
-		KeyValue = (WrongKeyValue[0] + 1) % 2;
-		ClapAttack_UpdateKey(KeyNameTmp[0], KeyValue, pGlobalBsiKeys);
-	      } else {
-
-		// Evaluate partial key logic for complete key info
-		for (k=0; k<NumKeys; k++) {
-
-		  // This requires updating the partial key info miter and attempting to infer key values
-		  ClapAttack_PartialKeyInferenceMiter( *ppCurKeyCnf, &pInferPartialKeyMiter, KeyNameTmp[k] );
-		  PartialKeySatStatus = ClapAttack_RunSat(pInferPartialKeyMiter);
-		  Abc_NtkDelete( pInferPartialKeyMiter );
-		  
-		  // Initially, this will always fall through. The second time, this will always break
-		  // unless a new key value is discovered. This is the case because it is possible
-		  // discovering one key value will allow others to be inferred, so we must check again.
-		  if ( PartialKeySatStatus && (PartialKeySatStatus != -1) ) {		    
-
-		    // Again, are we SAT?
-		    if ( !ClapAttack_RunSat(*ppCurKeyCnf) ){
-		      
-		      // Determine which key value we determined and update it
-		      Abc_NtkForEachPi( *ppCurKeyCnf, pKey, m ) {
-			if ( !strcmp(Abc_ObjName(pKey), KeyNameTmp[k]) ) {
-			  KeyValue = (*ppCurKeyCnf)->pModel[m];
-
-			  // Either remove the key or set it to constant 1.
-			  ClapAttack_UpdateKey(KeyNameTmp[k], KeyValue, pGlobalBsiKeys);
-			  printf("We determined that key %s is %d\n", Abc_ObjName(pKey), KeyValue);
-			  break;
-			}
-		      }
-
-		      // Optimize out key from partial CNF
-		      ntkTmp = Abc_NtkToLogic( *ppCurKeyCnf );
-		      Abc_NtkDelete( *ppCurKeyCnf );
-		      *ppCurKeyCnf = ntkTmp;
-		      Abc_NtkForEachPi( *ppCurKeyCnf, pKey, m ) {
-			if ( !strcmp(Abc_ObjName(pKey), KeyNameTmp[k]) ) {
-			  Abc_ObjReplaceByConstant(pKey, KeyValue);
-			  Abc_NtkDeleteObj(pKey);
-			  break;
-			}
-		      }
-		      
-		      // Check if we optimized out all the PIs but one.
-		      // IF so, free the partial info
-		      ntkTmp = Abc_NtkStrash( *ppCurKeyCnf, 0, 1, 0 );
-		      Abc_NtkDelete( *ppCurKeyCnf );
-		      *ppCurKeyCnf = ntkTmp;
-
-		      // Cleanup
-		      if ( (Abc_NtkPiNum(*ppCurKeyCnf) < 2) && fCurKeyCnfAlloc) {
-			Abc_NtkDelete( *ppCurKeyCnf );
-			*ppCurKeyCnf = NULL;
-			break;
-		      } 
-		    } else {
-		      // This should never occur... somehow the correct key was eliminated
-		      printf("The key is somehow UNSAT... Exiting.\n\n");
-		      exit(0);
-		    }		      
-		  }
-		}
-	      }
-
-	      // Cleanup memory allocations
-	      free( WrongKeyValue );
-	      free( KeyWithFreq );
-	      free( KeyNoFreq );
-	    
-	      // Print off updated keystore
-	      printf("KeyStore is now: {");
-	      for (k=0; k<pGlobalBsiKeys->NumKeys; k++)
-		printf("%d, ", pGlobalBsiKeys->KeyValue[k]);
-	      printf("}\n\n");
-
-	      /* Probe Point Counter 
-	      SatStatus = 1;
-	      /* End Probe Point Counter */
-	    }
-	  } else {
-	    printf("Mitering failed. Proceed.\n");
-	  }
-
-	  // Delete miter and move on.
-	  Abc_NtkDelete( pNtkMiter );
-
-	}
-      } while( !SatStatus && !MiterStatus);
-
-      // Cleanup and delete network for the isolated cone we
-      // were traversing
-      Abc_NtkDelete( pNtkCone );
-
-      for(k=0; k<MaxKeysConsidered; k++)
-	free(KeyNameTmp[k]);
-      free(KeyNameTmp);
-      free(ppNodeFreeList);
-    } 
-
-    // If we have fewer than the maximum allowable keys, continue fan-out traverse. (Recurse)
-    if( NumKeys <= MaxKeysConsidered ) {
-      ClapAttack_TraversalRecursive( pNtk, pNode, pGlobalBsiKeys, pOracleKey, MaxKeysConsidered, ppCurKeyCnf, pTotalProbes );
+  printf("\nRemoveNode Function:\n");
+  Abc_NtkForEachNode( pNtk, pNode, i )
+  {
+    if(strcmp(Abc_ObjName( pNode ), delNode) == 0)
+    {
+      Abc_NtkDeleteObj( pNode );
+      printf("\nNode %s successfully removed from the network.\n", delNode);
+      return 1;
     }
   }
-  
-  // Save off any key cnf info we found to the global key CNF store
-  if ( (*ppCurKeyCnf) && fCurKeyCnfAlloc ) {
-    if( ClapAttack_UpdateGlobalKeyCnf ( ppCurKeyCnf, pGlobalBsiKeys ) )
-      printf("Global CNF Update Failed. \n");
-    Abc_NtkDelete( *ppCurKeyCnf );
-  }
+  printf("\nFailed: node %s not found in the network.\n", delNode);
+  return 0;
 }
 
 // In order to run a multinode probe, we must merge the miters for EVERY node we plan to extract leakage from in order
