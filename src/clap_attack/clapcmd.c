@@ -4,20 +4,23 @@
 ABC_NAMESPACE_IMPL_START
 
 // Declarations
-static int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t * pAbc, int argc, int **argv);
-static int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int **argv);
-static int AdjoiningGate_RemoveNode_CMD(Abc_Frame_t * pAbc, int argc, int **argv);
-static int AdjoiningGate_ReplaceNode_CMD(Abc_Frame_t * pAbc, int argc, int **argv);
+static int AdjoiningGate_ScanLeakage_CMD( Abc_Frame_t * pAbc, int argc, int **argv );
+static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **argv );
+static int AdjoiningGate_AddNode_CMD( Abc_Frame_t * pAbc, int argc, int **argv );
+static int AdjoiningGate_RemoveNode_CMD( Abc_Frame_t * pAbc, int argc, int **argv );
+static int AdjoiningGate_ReplaceNode_CMD( Abc_Frame_t * pAbc, int argc, int **argv );
 
 // Function Definitions
 void ClapAttack_Init(Abc_Frame_t * pAbc) {
   Cmd_CommandAdd(pAbc, "Various", "scan", AdjoiningGate_ScanLeakage_CMD, 0);
+  Cmd_CommandAdd(pAbc, "Various", "list", AdjoiningGate_ListNetwork_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "add", AdjoiningGate_AddNode_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "rem", AdjoiningGate_RemoveNode_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "rep", AdjoiningGate_ReplaceNode_CMD, 0);
 }
 
-int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t * pAbc, int argc, int ** argv) {
+int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
+{
   int fVerbose;
   int c, result, alg=0, keysConsideredCutoff=7;
   char * pKey = "0000010010001101111101010111101000000010010011110010010110111110011110000010100110110111", * pOutFile = NULL; //Hard-code the key in
@@ -112,14 +115,59 @@ int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t * pAbc, int argc, int ** argv) {
   return 1;
 }
 
-//Abc_NtkCreateNode( Abc_Ntk_t * pNtk )
-//Abc_NtkCreateObj( Abc_Ntk_t * pNtk, Abc_ObjType_t Type );
-//Abc_NtkCreateNodeInv( Abc_Ntk_t * pNtk, Abc_Obj_t * pFanin );
-//Abc_NtkCreateNodeBuf( Abc_Ntk_t * pNtk, Abc_Obj_t * pFanin );
-//Abc_NtkCreateNodeAnd( Abc_Ntk_t * pNtk, Vec_Ptr_t * vFanins );
-//Abc_NtkCreateNodeOr( Abc_Ntk_t * pNtk, Vec_Ptr_t * vFanins );
-//Abc_NtkCreateNodeExor( Abc_Ntk_t * pNtk, Vec_Ptr_t * vFanins );
-//Abc_NtkCreateNodeMux( Abc_Ntk_t * pNtk, Abc_Obj_t * pNodeC, Abc_Obj_t * pNode1, Abc_Obj_t * pNode0 );
+static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **argv )
+{
+  int fVerbose;
+  int c, result;
+  
+  // set defaults
+  fVerbose = 0;
+
+  // get arguments
+  Extra_UtilGetoptReset();
+  while ((c = Extra_UtilGetopt(argc, argv, "vhn")) != EOF) {
+    switch (c) {
+    case 'v':
+      fVerbose ^= 1;
+      break;
+    case 'h':
+      goto usage;
+    default:
+      goto usage;
+    }
+  }
+
+  // Check if there is currently a network. If not, exit.
+  if ( pAbc->pNtkCur == NULL )
+  {
+    fprintf( pAbc->Out, "Empty network.\n" );
+    return 0;
+  }
+  
+  // call the main function
+  result = AdjoiningGate_ListNetwork(pAbc);
+
+  // print verbose information if the verbose mode is on
+  if (fVerbose)
+  {
+    Abc_Print(1, "\nVerbose mode is on.\n");
+    if (result)
+      Abc_Print(1, "The command finished successfully.\n");
+    else Abc_Print(1, "The command execution has failed.\n");
+  }
+
+  //exit(0);
+
+  return 0;
+
+ usage:
+  Abc_Print(-2, "usage: list [-vh]\n");
+  Abc_Print(-2, "\t           List all the nodes in the network.\n");
+  Abc_Print(-2, "\t-v         : toggle printing verbose information [default = %s]\n", fVerbose ? "yes" : "no");
+  Abc_Print(-2, "\t-h         : print the command usage \n");
+  return 1;
+}
+
 int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
 {
   int fVerbose;
@@ -250,7 +298,6 @@ int AdjoiningGate_RemoveNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
   return 1;
 }
 
-//Abc_ObjReplace( Abc_Obj_t * pObjOld, Abc_Obj_t * pObjNew );
 int AdjoiningGate_ReplaceNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
 {
   int fVerbose;

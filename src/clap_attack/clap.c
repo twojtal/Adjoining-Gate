@@ -34,8 +34,9 @@ struct SatMiterList {
 
 int ClapAttack_ClapAttackAbc(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff);
 int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff);
+int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc );
 int AdjoiningGate_AddNode( Abc_Frame_t * pAbc );
-int AdjoiningGate_RemoveNode(Abc_Frame_t * pAbc, char * delNode);
+int AdjoiningGate_RemoveNode( Abc_Frame_t * pAbc, char * delNode );
 int AdjoiningGate_ReplaceNode( Abc_Frame_t * pAbc, char * repNode );
 void ClapAttack_TraversalRecursiveHeuristic( Abc_Ntk_t * pNtk, Abc_Obj_t * pCurNode, struct BSI_KeyData_t * pGlobalBsiKeys, int MaxKeysConsidered, Abc_Ntk_t ** ppCurKeyCnf, struct SatMiterList ** ppSatMiterList, int *pNumProbes, int MaxProbes );
 void ClapAttack_CombineMitersHeuristic( struct SatMiterList ** ppSatMiterListOld, struct SatMiterList ** ppSatMiterListNew, int * pMaxNodesConsidered, int MaxKeysConsidered, int MaxPiNum, int fConsiderAll );
@@ -327,6 +328,36 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
   // We are done -- cleanup and exit
   free( GlobalBsiKeys.KeyValue );
     
+  return 1;
+}
+
+int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc )
+{
+  Abc_Ntk_t *pNtk;
+  Abc_Obj_t *pNode;
+  int i, TotalNumNodes = 0;
+
+  // Get the network that is read into ABC
+  pNtk = Abc_FrameReadNtk(pAbc);
+
+  if(pNtk == NULL) {
+    Abc_Print(-1, "AdjoiningGate_ListNetwork: Getting the target network has failed.\n");
+    return 0;
+  }
+
+  printf("\nNetwork List:\n");
+  Abc_NtkForEachNode( pNtk, pNode, i )
+  {
+    printf("Node %s:\t", Abc_ObjName(pNode));
+    printf("Fanin = %d,\t", Abc_ObjFaninNum(pNode));
+    printf("Fanout = %d,\t", Abc_ObjFanoutNum(pNode));
+    printf("Level = %d\n", Abc_ObjLevel(pNode));
+    //Abc_ObjPrint(file, pNode); //This function can print the node to a file!
+    TotalNumNodes++;
+    pNode->fMarkC = 0; // Reset markc so we can terminate without seg-fault
+  }
+
+  printf("\nTotal nodes in circuit: %d\n", TotalNumNodes);
   return 1;
 }
 
