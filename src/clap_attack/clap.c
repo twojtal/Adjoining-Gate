@@ -119,10 +119,6 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
   nValidNodes = 0;
   //nAvgKeyCount = 0;  */
   /* End  Global Var for Probe Point Counter */
-
-  //
-  // Convert Key to proper format string
-  //
   
   // get length of string str
   int str_length = 0;
@@ -144,7 +140,7 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
 
   // Print out all configurable program state for user.
   printf("\nLEAKAGE ANALYSIS CONFIGURATION:\n");
-  printf("Physical attack algorithm: Multinode Probe");
+  printf("Physical attack mode: Multinode Probe");
 
   printf("Output File for Logical Attack: %s\n", pOutFile);
   printf("\nLaunching Leakage Analysis...\n\n");
@@ -164,125 +160,132 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
   ClapAttack_InitKeyStore( NumKeys, &GlobalBsiKeys );
   MaxProbes = 3;
   
-  // Set visited for each node to 0
   Abc_NtkForEachNode( pNtk, pNode, i )
-    pNode->fMarkC = 0;
-
+  {
+    pNode->fMarkC = 0; // Set visited for each node to 0
+    pNode->fMarkB = 0; // Set leakage for each node to 0
+  }
+  
   // How many nodes are we currently considering for the multi-node probe? This will iteratively increase
   // as we discover new nodes, so this should be left. It is not a parameter.
   MaxNodesConsidered = 2;
 
   // Goal: Iterate through each PI. Identify list of keys.
   // NOTE -- THIS RUNS ALGORITHM 2, MULTI-NODE PROBING.
+  // Infinite loop -- break when you run out of probe-able nodes
+  while (1)
+  {
+    // Iteratively increase the number of keys we are willing to consider in the fan-in for a probe-able node
+    // This ensures that only the best node at a given time will be considered for probing
+    for ( MaxKeysConsidered = 1; MaxKeysConsidered < keysConsideredCutoff; MaxKeysConsidered++ )
+    {
+      // How many keys are we currently considering?
+      //printf("Set Number of Keys considered to: %d\n\n", MaxKeysConsidered);
+      GlobalBsiKeys.Updated = 1;
+      fConsiderAll = 1;
 
-    // Infinite loop -- break when you run out of probe-able nodes
-    while (1) {
+      // did we find any key leakage?
+      while ( GlobalBsiKeys.Updated )
+      {
+        // Set the update var to 0. IF we change our keystore, set it back to 1 and re-loop over the tree.
+        GlobalBsiKeys.Updated = 0;
+        
+        Abc_NtkForEachPi( pNtk, pPi, i )
+        {
+          // Are we looking at a key input? And do we know it?-- If so, begin fanout
+          if( strstr(Abc_ObjName(pPi), "key") )
+          {
+            // Get key index
+            KeyIndex = (int) strtol(&((Abc_ObjName(pPi))[8]), (char **)NULL, 10);
+            
+            // Do we know this key index?
+            if( GlobalBsiKeys.KeyValue[KeyIndex] < 0 ) {
+              pCurKeyCnf = NULL;
+              NumProbes = 0;
 
-      // Iteratively increase the number of keys we are willing to consider in the fan-in for a probe-able node
-      // This ensures that only the best node at a given time will be considered for probing
-      for ( MaxKeysConsidered = 1; MaxKeysConsidered < keysConsideredCutoff; MaxKeysConsidered++ ) {
+              // Start traversal of tree -- any new key inference will set the updated variable and restart new traversal
+              ClapAttack_TraversalRecursiveHeuristic( pNtk, pPi, &GlobalBsiKeys, MaxKeysConsidered, &GlobalBsiKeys.pKeyCnf, &pSatMiterList, &NumProbes, MaxProbes );
+            }
+          }
+        }
 
-	// How many keys are we currently considering?
-	//printf("Set Number of Keys considered to: %d\n\n", MaxKeysConsidered);
-	GlobalBsiKeys.Updated = 1;
-	fConsiderAll = 1;
+        // Now we must generate our best multi-node probes. Keep merging probe points until no sensitizing inputs can be found...
+        while ( pSatMiterList )
+        {
+          // Find the current best sensitizing inputs based on the sensitizable nodes available
+          ClapAttack_CombineMitersHeuristic( &pSatMiterList, &pSatMiterListNew, &MaxNodesConsidered, MaxKeysConsidered, Abc_NtkPiNum(pNtk), fConsiderAll );
 
-	// did we find any key leakage?
-	while ( GlobalBsiKeys.Updated ) {
+          fConsiderAll = 0;
 
-	  // Set the update var to 0. IF we change our keystore, set it back to 1 and re-loop over the tree.
-	  GlobalBsiKeys.Updated = 0;
-	  
-	  Abc_NtkForEachPi( pNtk, pPi, i ) {
-	    
-	    // Are we looking at a key input? And do we know it?-- If so, begin fanout
-	    if( strstr(Abc_ObjName(pPi), "key") ) {
-	      
-	      // Get key index
-	      KeyIndex = (int) strtol(&((Abc_ObjName(pPi))[8]), (char **)NULL, 10);
-	      
-	      // Do we know this key index?
-	      if( GlobalBsiKeys.KeyValue[KeyIndex] < 0 ) {
-		      pCurKeyCnf = NULL;
-		      NumProbes = 0;
-
-		      // Start traversal of tree -- any new key inference will set the updated variable and restart new traversal
-		      ClapAttack_TraversalRecursiveHeuristic( pNtk, pPi, &GlobalBsiKeys, MaxKeysConsidered, &GlobalBsiKeys.pKeyCnf, &pSatMiterList, &NumProbes, MaxProbes );
-	      }
-	    }
-	  }
-	
-	  // Now we must generate our best multi-node probes. Keep merging probe points until no sensitizing inputs can be found...
-	  while ( pSatMiterList ) {
-
-	    // Find the current best sensitizing inputs based on the sensitizable nodes available
-	    ClapAttack_CombineMitersHeuristic( &pSatMiterList, &pSatMiterListNew, &MaxNodesConsidered, MaxKeysConsidered, Abc_NtkPiNum(pNtk), fConsiderAll );
-
-	    fConsiderAll = 0;
-
-	    // Did we update the nodes we are considering probing
-	    if ( pSatMiterListNew ) {
-	      // Free old miter list in favor of new one.
-	      ClapAttack_FreeSatMiterList(&pSatMiterList);
-	      pSatMiterList = pSatMiterListNew;
-	      pSatMiterListNew = NULL;
-	      // Now consider combined probes...
-	      MaxNodesConsidered++;
-	    } else {
-	      
-	      // Debug print -- What is the node we are going to probe? -- Print then break out and probe it!
-	      pSatMiterListCur = pSatMiterList;
-	      while (pSatMiterListCur) {
-		printf("Sat Miter Node Pairing: ");
-		for ( j=0; j<pSatMiterListCur->MatchedNodes; j++ )
-		  printf("%s ", Abc_ObjName(pSatMiterListCur->ppSatNode[j]));
-		printf("\tIdentifiable Keys from Miter: %f\n", pSatMiterListCur->IdentifiableKeyBits);
-		pSatMiterListCur = pSatMiterListCur->pNext;
-	      }
-	      printf("\n");
-
-	      break;
-	    }
-	    
-	    // Debug print
-	    pSatMiterListCur = pSatMiterList;
-	    while (pSatMiterListCur) {
-	      printf("Sat Miter Node Pairing: ");
-	      for ( j=0; j<pSatMiterListCur->MatchedNodes; j++ )
-		printf("%s ", Abc_ObjName(pSatMiterListCur->ppSatNode[j]));
-	      printf("\tIdentifiable Keys from Miter: %f\n", pSatMiterListCur->IdentifiableKeyBits);
-	      pSatMiterListCur = pSatMiterListCur->pNext;
-	    }
-	    printf("\n");
-	  }
-	}
-      }
-      
-      // If there were satisfying inputs identified, simulate the EOFM probe of these nodes with our inputs.
-      if (pSatMiterList) {
-
-	// Note that this is gated by eliminating a sufficient portion of the key space to make the probe worthwhile
-	if (pSatMiterList->IdentifiableKeyBits >= (keyElimCutoff)) {
-
-	  // Simulate and infer from the EOFM probe.
-	  TotalProbes++;
-	  ClapAttack_EvalMultinodeProbe ( pSatMiterList, pNtk, &GlobalBsiKeys, pOracleKey, &GlobalBsiKeys.pKeyCnf, MaxKeysConsidered );
-	  ClapAttack_FreeSatMiterList(&pSatMiterList);
-	  MaxNodesConsidered = 2;
-	  pSatMiterList = NULL;
-	  
-	  // Set visited for each node to 0
-	  Abc_NtkForEachNode( pNtk, pNode, j )
-	    pNode->fMarkC = 0;
-
-	} else {
-	  break;
-	}
-      } else {
-	// There is no more physical data to be had...
-	break;
+          // Did we update the nodes we are considering probing
+          if ( pSatMiterListNew )
+          {
+            // Free old miter list in favor of new one.
+            ClapAttack_FreeSatMiterList(&pSatMiterList);
+            pSatMiterList = pSatMiterListNew;
+            pSatMiterListNew = NULL;
+            // Now consider combined probes...
+            MaxNodesConsidered++;
+          }
+          else
+          {
+            // Debug print -- What is the node we are going to probe? -- Print then break out and probe it!
+            pSatMiterListCur = pSatMiterList;
+            while (pSatMiterListCur)
+            {
+              printf("Sat Miter Node Pairing: ");
+              for ( j=0; j<pSatMiterListCur->MatchedNodes; j++ )
+                printf("%s ", Abc_ObjName(pSatMiterListCur->ppSatNode[j]));
+              printf("\tIdentifiable Keys from Miter: %f\n", pSatMiterListCur->IdentifiableKeyBits);
+              pSatMiterListCur = pSatMiterListCur->pNext;
+            }
+            printf("\n");
+            break;
+          }
+          // Debug print
+          pSatMiterListCur = pSatMiterList;
+          while (pSatMiterListCur)
+          {
+            printf("Sat Miter Node Pairing: ");
+            for ( j=0; j<pSatMiterListCur->MatchedNodes; j++ )
+              printf("%s ", Abc_ObjName(pSatMiterListCur->ppSatNode[j]));
+            printf("\tIdentifiable Keys from Miter: %f\n", pSatMiterListCur->IdentifiableKeyBits);
+            pSatMiterListCur = pSatMiterListCur->pNext;
+          }
+          printf("\n");
+        }
       }
     }
+
+    // If there were satisfying inputs identified, simulate the EOFM probe of these nodes with our inputs.
+    if (pSatMiterList)
+    {
+      // Note that this is gated by eliminating a sufficient portion of the key space to make the probe worthwhile
+      if (pSatMiterList->IdentifiableKeyBits >= (keyElimCutoff))
+      {
+        // Simulate and infer from the EOFM probe.
+        TotalProbes++;
+        ClapAttack_EvalMultinodeProbe ( pSatMiterList, pNtk, &GlobalBsiKeys, pOracleKey, &GlobalBsiKeys.pKeyCnf, MaxKeysConsidered );
+        ClapAttack_FreeSatMiterList(&pSatMiterList);
+        MaxNodesConsidered = 2;
+        pSatMiterList = NULL;
+        
+        Abc_NtkForEachNode( pNtk, pNode, j )
+        {
+          pNode->fMarkC = 0; // Set visited for each node to 0
+          pNode->fMarkB = 0; // Set leakage for each node to 0
+        }
+      }
+      else
+      {
+        break;
+      }
+    }
+    else
+    {
+      break; // There is no more physical data to be had...
+    }
+  }
   
   // Append known keys into partial key CNF for finalized circuit formulation
   //ClapAttack_WriteMiterVerilog(GlobalBsiKeys.pKeyCnf, "global_keystore.v");
@@ -300,13 +303,21 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
   printf("}\n\n");
 
   //printf("We found %d of %d total keys using %d probes\n", KeysFound, GlobalBsiKeys.NumKeys, TotalProbes );
-  int TotalNumNodes = 0;
-  int NodesLeaking = 0;
+  int TotalNumNodes = 0, NodesLeaking = 0, NodesVisited = 0;
   printf("Node Info:\n");
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
     printf("Node %s:\t", Abc_ObjName(pNode));
     if(pNode->fMarkC) //If the node was visited (Leaks Key Information)
+    {
+      printf("Visited = true,\t\t");
+      NodesVisited++;
+    }
+    else
+    {
+      printf("Visited = false,\t");
+    }
+    if(pNode->fMarkB) //If the node was visited (Leaks Key Information)
     {
       printf("Leaks = true,\t");
       NodesLeaking++;
@@ -322,7 +333,8 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
     TotalNumNodes++;
     pNode->fMarkC = 0; // Reset markc so we can terminate without seg-fault
   }
-  printf("\nNodes leaking key information: %d\n", NodesLeaking);
+  printf("\nNodes visited: %d\n", NodesVisited);
+  printf("Nodes leaking key information: %d\n", NodesLeaking);
   printf("Total nodes in circuit: %d\n", TotalNumNodes);
 
   // We are done -- cleanup and exit
@@ -354,7 +366,6 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc )
     printf("Level = %d\n", Abc_ObjLevel(pNode));
     //Abc_ObjPrint(file, pNode); //This function can print the node to a file!
     TotalNumNodes++;
-    pNode->fMarkC = 0; // Reset markc so we can terminate without seg-fault
   }
 
   printf("\nTotal nodes in circuit: %d\n", TotalNumNodes);
@@ -735,12 +746,16 @@ void ClapAttack_TraversalRecursiveHeuristic( Abc_Ntk_t * pNtk, Abc_Obj_t * pCurN
           SatStatus = ClapAttack_RunSat(pNtkMiter);
 
           // Did SAT return sensitizing inputs?
-          if (!SatStatus) {
+          if (!SatStatus)
+          {
             // Update SAT node list with new Sat miter
-            pNode->fMarkC = 1; //Node leaks key information
+            pNode->fMarkB = 1; //Node leaks key information
+            pNode->fMarkC = 1; //Node visited
             (*pNumProbes)++;
             //ClapAttack_UpdateSatMiterList( ppSatMiterList, &pNode, pNtkMiter, NumKeys, KeyNameTmp, 1, 1.0/(1<<(MaxKeysConsidered-1)), pNtkMiter->pModel );
-          } else {
+          }
+          else
+          {
             // Node is UNSAT, but has the right number of keys... It's useless so mark it
             pNode->fMarkC = 1;
           }
