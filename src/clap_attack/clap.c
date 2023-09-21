@@ -429,7 +429,8 @@ int AdjoiningGate_ReplaceNode( Abc_Frame_t * pAbc, char * repNode )
   {
     if(strcmp(Abc_ObjName( pNode ), repNode) == 0)
     {
-      Abc_ObjReplace( pNode, newNode);
+      newNode->Level = Abc_ObjLevel(pNode);
+      Abc_ObjReplace( pNode, newNode );
       printf("\nNode %s successfully replaced by node %s in the network.\n", repNode, Abc_ObjName(newNode));
       return 1;
     }
