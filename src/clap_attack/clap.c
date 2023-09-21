@@ -302,9 +302,28 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
   }*/
   printf("}\n\n");
 
-  //printf("We found %d of %d total keys using %d probes\n", KeysFound, GlobalBsiKeys.NumKeys, TotalProbes );
-  int TotalNumNodes = 0, NodesLeaking = 0, NodesVisited = 0;
-  printf("Node Info:\n");
+  // We are done -- cleanup and exit
+  free( GlobalBsiKeys.KeyValue );
+  
+  // List the network
+  return AdjoiningGate_ListNetwork(pAbc);
+}
+
+int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc )
+{
+  Abc_Ntk_t *pNtk;
+  Abc_Obj_t *pNode;
+  int i, NodesVisited = 0, NodesLeaking = 0, TotalNumNodes = 0;
+
+  // Get the network that is read into ABC
+  pNtk = Abc_FrameReadNtk(pAbc);
+
+  if(pNtk == NULL) {
+    Abc_Print(-1, "AdjoiningGate_ListNetwork: Getting the target network has failed.\n");
+    return 0;
+  }
+
+  printf("Network List:\n");
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
     printf("Node %s:\t", Abc_ObjName(pNode));
@@ -331,44 +350,11 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
     printf("Level = %d\n", Abc_ObjLevel(pNode));
     //Abc_ObjPrint(file, pNode); //This function can print the node to a file!
     TotalNumNodes++;
-    pNode->fMarkC = 0; // Reset markc so we can terminate without seg-fault
+    //pNode->fMarkC = 0; // Reset markc so we can terminate without seg-fault
   }
   printf("\nNodes visited: %d\n", NodesVisited);
   printf("Nodes leaking key information: %d\n", NodesLeaking);
   printf("Total nodes in circuit: %d\n", TotalNumNodes);
-
-  // We are done -- cleanup and exit
-  free( GlobalBsiKeys.KeyValue );
-    
-  return 1;
-}
-
-int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc )
-{
-  Abc_Ntk_t *pNtk;
-  Abc_Obj_t *pNode;
-  int i, TotalNumNodes = 0;
-
-  // Get the network that is read into ABC
-  pNtk = Abc_FrameReadNtk(pAbc);
-
-  if(pNtk == NULL) {
-    Abc_Print(-1, "AdjoiningGate_ListNetwork: Getting the target network has failed.\n");
-    return 0;
-  }
-
-  printf("\nNetwork List:\n");
-  Abc_NtkForEachNode( pNtk, pNode, i )
-  {
-    printf("Node %s:\t", Abc_ObjName(pNode));
-    printf("Fanin = %d,\t", Abc_ObjFaninNum(pNode));
-    printf("Fanout = %d,\t", Abc_ObjFanoutNum(pNode));
-    printf("Level = %d\n", Abc_ObjLevel(pNode));
-    //Abc_ObjPrint(file, pNode); //This function can print the node to a file!
-    TotalNumNodes++;
-  }
-
-  printf("\nTotal nodes in circuit: %d\n", TotalNumNodes);
   return 1;
 }
 
