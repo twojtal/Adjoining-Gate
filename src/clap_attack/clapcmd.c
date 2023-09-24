@@ -15,8 +15,8 @@ void ClapAttack_Init(Abc_Frame_t * pAbc) {
   Cmd_CommandAdd(pAbc, "Various", "scan", AdjoiningGate_ScanLeakage_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "list", AdjoiningGate_ListNetwork_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "add", AdjoiningGate_AddNode_CMD, 0);
-  Cmd_CommandAdd(pAbc, "Various", "rem", AdjoiningGate_RemoveNode_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "rep", AdjoiningGate_ReplaceNode_CMD, 0);
+  //Cmd_CommandAdd(pAbc, "Various", "rem", AdjoiningGate_RemoveNode_CMD, 0);
 }
 
 int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
@@ -205,9 +205,15 @@ int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
     fprintf( pAbc->Out, "Empty network.\n" );
     return 0;
   }
+
+  // If no node was specified, show error
+  if (addNode == NULL) {
+    fprintf( pAbc->Out, "No node specified for deletion.\n" );
+    return 0;
+  }
   
   // call the main function
-  result = AdjoiningGate_AddNode( pAbc );
+  result = AdjoiningGate_AddNode( pAbc, addNode );
 
   // print verbose information if the verbose mode is on
   if (fVerbose) {
@@ -224,7 +230,7 @@ int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
  usage:
   Abc_Print(-2, "usage: add [-vh] -n <node> \n");
   Abc_Print(-2, "\t           Add a node to the network.\n");
-  Abc_Print(-2, "\t-n <node>  : input the node to be deleted \n");
+  Abc_Print(-2, "\t-n <node>  : the node to be targeted \n");
   Abc_Print(-2, "\t-v         : toggle printing verbose information [default = %s]\n", fVerbose ? "yes" : "no");
   Abc_Print(-2, "\t-h         : print the command usage \n");
   return 1;

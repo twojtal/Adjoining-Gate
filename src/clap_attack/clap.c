@@ -35,7 +35,7 @@ struct SatMiterList {
 int ClapAttack_ClapAttackAbc(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff);
 int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff);
 int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc );
-int AdjoiningGate_AddNode( Abc_Frame_t * pAbc );
+int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode );
 int AdjoiningGate_RemoveNode( Abc_Frame_t * pAbc, char * delNode );
 int AdjoiningGate_ReplaceNode( Abc_Frame_t * pAbc, char * repNode );
 void ClapAttack_TraversalRecursiveHeuristic( Abc_Ntk_t * pNtk, Abc_Obj_t * pCurNode, struct BSI_KeyData_t * pGlobalBsiKeys, int MaxKeysConsidered, Abc_Ntk_t ** ppCurKeyCnf, struct SatMiterList ** ppSatMiterList, int *pNumProbes, int MaxProbes );
@@ -359,23 +359,38 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc )
 }
 
 // Adds a blank node to the network
-int AdjoiningGate_AddNode( Abc_Frame_t * pAbc )
+int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode ) //Add gate type?
 {
   Abc_Ntk_t *pNtk;
-  Abc_Obj_t *tempNode;
+  Abc_Obj_t *newNode, *pNode, *pFanin;
+  Vec_Ptr_t *vFanins;
+  int i, j;
 
-  // Get the network that is read into ABC
-  pNtk = Abc_FrameReadNtk(pAbc);
-
-  if(pNtk == NULL) {
-    Abc_Print(-1, "AdjoiningGate_AddNode: Getting the target network has failed.\n");
+  printf("\nAdd Node Function:\n");
+  pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
+  if(pNtk == NULL)
+  {
+    Abc_Print(-1, "Getting the target network has failed.\n");
     return 0;
   }
-
-  printf("\nAddNode Function:\n");
-  tempNode = Abc_NtkCreateNode( pNtk );
-  printf("\nNode %s added.\n", Abc_ObjName( tempNode ));
-  return 1;
+  Abc_NtkForEachNode( pNtk, pNode, i )
+  {
+    if(strcmp(Abc_ObjName( pNode ), targetNode) == 0)
+    {
+      vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins
+      Abc_ObjForEachFanin( pNode, pFanin, j )
+      {
+        Vec_PtrSetEntry(vFanins, j, pFanin);
+      }
+      newNode = Abc_NtkCreateNodeOr( pNtk, vFanins);
+      newNode->Level = Abc_ObjLevel(pNode); //Transfer the level of the node
+      Abc_ObjAddFanin(Abc_NtkCreatePo( pNtk ), newNode); //Creating primary output for added node
+      printf("\nNode %s added.\n", Abc_ObjName( newNode ));
+      return 1;
+    }
+  }
+  printf("\nFailed: node %s not found in the network.\n", targetNode);
+  return 0;
 }
 
 // Deletes a node from the network
@@ -411,25 +426,28 @@ int AdjoiningGate_RemoveNode( Abc_Frame_t * pAbc, char * delNode )
 int AdjoiningGate_ReplaceNode( Abc_Frame_t * pAbc, char * repNode )
 {
   Abc_Ntk_t *pNtk;
-  Abc_Obj_t *pNode, *newNode;
-  int i;
+  Abc_Obj_t *newNode, *pNode, *pFanin;
+  Vec_Ptr_t *vFanins;
+  int i, j;
 
-  // Get the network that is read into ABC
-  pNtk = Abc_FrameReadNtk(pAbc);
-
-  if(pNtk == NULL) {
-    Abc_Print(-1, "AdjoiningGate_RemoveNode: Getting the target network has failed.\n");
+  printf("\nReplace Node Function:\n");
+  pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
+  if(pNtk == NULL)
+  {
+    Abc_Print(-1, "Getting the target network has failed.\n");
     return 0;
   }
-
-  newNode = Abc_NtkCreateNode( pNtk );
-
-  printf("\nReplaceNode Function:\n");
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
     if(strcmp(Abc_ObjName( pNode ), repNode) == 0)
     {
-      newNode->Level = Abc_ObjLevel(pNode);
+      vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins
+      Abc_ObjForEachFanin( pNode, pFanin, j )
+      {
+        Vec_PtrSetEntry(vFanins, j, pFanin);
+      }
+      newNode = Abc_NtkCreateNodeOr( pNtk, vFanins);
+      newNode->Level = Abc_ObjLevel(pNode); //Transfer the level of the node
       Abc_ObjReplace( pNode, newNode );
       printf("\nNode %s successfully replaced by node %s in the network.\n", repNode, Abc_ObjName(newNode));
       return 1;
