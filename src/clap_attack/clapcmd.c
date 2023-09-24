@@ -6,6 +6,7 @@ ABC_NAMESPACE_IMPL_START
 // Declarations
 static int AdjoiningGate_ScanLeakage_CMD( Abc_Frame_t * pAbc, int argc, int **argv );
 static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **argv );
+static int AdjoiningGate_BFS_CMD( Abc_Frame_t * pAbc, int argc, int **argv );
 static int AdjoiningGate_AddNode_CMD( Abc_Frame_t * pAbc, int argc, int **argv );
 static int AdjoiningGate_RemoveNode_CMD( Abc_Frame_t * pAbc, int argc, int **argv );
 static int AdjoiningGate_ReplaceNode_CMD( Abc_Frame_t * pAbc, int argc, int **argv );
@@ -14,6 +15,7 @@ static int AdjoiningGate_ReplaceNode_CMD( Abc_Frame_t * pAbc, int argc, int **ar
 void ClapAttack_Init(Abc_Frame_t * pAbc) {
   Cmd_CommandAdd(pAbc, "Various", "scan", AdjoiningGate_ScanLeakage_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "list", AdjoiningGate_ListNetwork_CMD, 0);
+  Cmd_CommandAdd(pAbc, "Various", "bfs", AdjoiningGate_BFS_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "add", AdjoiningGate_AddNode_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "rep", AdjoiningGate_ReplaceNode_CMD, 0);
   //Cmd_CommandAdd(pAbc, "Various", "rem", AdjoiningGate_RemoveNode_CMD, 0);
@@ -125,7 +127,7 @@ static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **ar
 
   // get arguments
   Extra_UtilGetoptReset();
-  while ((c = Extra_UtilGetopt(argc, argv, "vhn")) != EOF) {
+  while ((c = Extra_UtilGetopt(argc, argv, "vh")) != EOF) {
     switch (c) {
     case 'v':
       fVerbose ^= 1;
@@ -163,6 +165,69 @@ static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **ar
  usage:
   Abc_Print(-2, "usage: list [-vh]\n");
   Abc_Print(-2, "\t           List all the nodes in the network.\n");
+  Abc_Print(-2, "\t-v         : toggle printing verbose information [default = %s]\n", fVerbose ? "yes" : "no");
+  Abc_Print(-2, "\t-h         : print the command usage \n");
+  return 1;
+}
+
+static int AdjoiningGate_BFS_CMD( Abc_Frame_t * pAbc, int argc, int **argv )
+{
+  int fVerbose;
+  int c, gSize, result;
+  
+  // set defaults
+  fVerbose = 0;
+  gSize = 2;
+
+  // get arguments
+  Extra_UtilGetoptReset();
+  while ((c = Extra_UtilGetopt(argc, argv, "vhg")) != EOF)
+  {
+    switch (c) {
+    case 'g':
+      gSize = atoi(argv[globalUtilOptind]);
+      break;
+    case 'v':
+      fVerbose ^= 1;
+      break;
+    case 'h':
+      goto usage;
+    default:
+      goto usage;
+    }
+  }
+
+  // Check if there is currently a network. If not, exit.
+  if ( pAbc->pNtkCur == NULL )
+  {
+    fprintf( pAbc->Out, "Empty network.\n" );
+    return 0;
+  }
+
+  if (gSize<1 || gSize>50)
+  {
+    fprintf( pAbc->Out, "Invalid group size.\n" );
+    return 0;
+    gSize = 2;
+  }
+  
+  // call the main function
+  result = AdjoiningGate_BFS(pAbc, gSize);
+
+  // print verbose information if the verbose mode is on
+  if (fVerbose)
+  {
+    Abc_Print(1, "\nVerbose mode is on.\n");
+    if (result)
+      Abc_Print(1, "The command finished successfully.\n");
+    else Abc_Print(1, "The command execution has failed.\n");
+  }
+
+  return 0;
+
+ usage:
+  Abc_Print(-2, "usage: bfs [-vh]\n");
+  Abc_Print(-2, "\t           Breadth First Search to update adjacency tags.\n");
   Abc_Print(-2, "\t-v         : toggle printing verbose information [default = %s]\n", fVerbose ? "yes" : "no");
   Abc_Print(-2, "\t-h         : print the command usage \n");
   return 1;

@@ -35,6 +35,7 @@ struct SatMiterList {
 int ClapAttack_ClapAttackAbc(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff);
 int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff);
 int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc );
+int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size);
 int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode );
 int AdjoiningGate_RemoveNode( Abc_Frame_t * pAbc, char * delNode );
 int AdjoiningGate_ReplaceNode( Abc_Frame_t * pAbc, char * repNode );
@@ -102,7 +103,8 @@ int ClapAttack_ClapAttackAbc(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int
   return result;
 }
 
-int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff) {
+int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff)
+{
   int i, j=0, NumKeys, KeyIndex, MaxKeysConsidered, MaxNodesConsidered;
   Abc_Ntk_t *pNtk, *pCurKeyCnf; 
   Abc_Obj_t *pPi, *pNode;
@@ -138,11 +140,6 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
     j++;
   }  
 
-  // Print out all configurable program state for user.
-  printf("\nLEAKAGE ANALYSIS CONFIGURATION:\n");
-  printf("Physical attack mode: Multinode Probe");
-
-  printf("Output File for Logical Attack: %s\n", pOutFile);
   printf("\nLaunching Leakage Analysis...\n\n");
   
   // Parameter for the maximum keys inputs that can be fanned into a node before ignoring it.
@@ -162,8 +159,10 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
   
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
+    pNode->fMarkA = 0; // Set BFS visited for each node to 0
     pNode->fMarkC = 0; // Set visited for each node to 0
     pNode->fMarkB = 0; // Set leakage for each node to 0
+    pNode->iTemp = 0; // Set adjacency tag for each node to 0
   }
   
   // How many nodes are we currently considering for the multi-node probe? This will iteratively increase
@@ -272,8 +271,10 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
         
         Abc_NtkForEachNode( pNtk, pNode, j )
         {
+          pNode->fMarkA = 0; // Set BFS visited for each node to 0
           pNode->fMarkC = 0; // Set visited for each node to 0
           pNode->fMarkB = 0; // Set leakage for each node to 0
+          pNode->iTemp = 0; // Set adjacency tag for each node to 0
         }
       }
       else
@@ -286,24 +287,15 @@ int ClapAttack_ClapAttack(Abc_Frame_t * pAbc, char *pKey, char *pOutFile, int al
       break; // There is no more physical data to be had...
     }
   }
-  
-  // Append known keys into partial key CNF for finalized circuit formulation
-  //ClapAttack_WriteMiterVerilog(GlobalBsiKeys.pKeyCnf, "global_keystore.v");
-  //ClapAttack_GenSatAttackConfig( pNtk, &GlobalBsiKeys, pOutFile );
-  
-
-  // Print the final key value inferred from the attack.
-  /*printf("KeyStore is now: {");
-  KeysFound = GlobalBsiKeys.NumKeys;
-  for (i=0; i<GlobalBsiKeys.NumKeys; i++){
-    if ( GlobalBsiKeys.KeyValue[i] == -1)
-      KeysFound--;
-    printf("%d, ", GlobalBsiKeys.KeyValue[i]);
-  }*/
   printf("}\n\n");
 
   // We are done -- cleanup and exit
   free( GlobalBsiKeys.KeyValue );
+
+  Abc_NtkForEachNode( pNtk, pNode, i )
+  {
+    pNode->iTemp = 0; // Set adjacency tag for each node to 0
+  }
   
   // List the network
   return AdjoiningGate_ListNetwork(pAbc);
@@ -347,7 +339,8 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc )
     }
     printf("Fanin = %d,\t", Abc_ObjFaninNum(pNode));
     printf("Fanout = %d,\t", Abc_ObjFanoutNum(pNode));
-    printf("Level = %d\n", Abc_ObjLevel(pNode));
+    printf("Level = %d\t", Abc_ObjLevel(pNode));
+    printf("Adj. Tag = %d\n", pNode->iTemp);
     //Abc_ObjPrint(file, pNode); //This function can print the node to a file!
     TotalNumNodes++;
     //pNode->fMarkC = 0; // Reset markc so we can terminate without seg-fault
@@ -356,6 +349,41 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc )
   printf("Nodes leaking key information: %d\n", NodesLeaking);
   printf("Total nodes in circuit: %d\n", TotalNumNodes);
   return 1;
+}
+
+int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
+{
+  Abc_Ntk_t *pNtk;
+  Abc_Obj_t *pNode;
+  int tag = 1, set = 1, i=0, level;
+  printf("BFS Adjacency Tags Updating...");
+  pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
+  if(pNtk == NULL)
+  {
+    Abc_Print(-1, "Getting the target network has failed.\n");
+    return 0;
+  }
+  //BFS ALGORITHM
+  for(level = 1; level <= Abc_NtkLevel(pNtk); level++)
+  {
+    Abc_NtkForEachNode( pNtk, pNode, i )
+    {
+      if(Abc_ObjLevel(pNode) == level)
+      {
+        pNode->iTemp = tag;
+        if (set == group_size)
+        {
+          set = 1;
+          tag++;
+        }
+        else
+        {
+          set++;
+        }
+      }
+    }
+  }
+  return AdjoiningGate_ListNetwork(pAbc);
 }
 
 // Adds a blank node to the network
