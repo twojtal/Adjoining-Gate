@@ -32,8 +32,8 @@ struct SatMiterList {
     struct SatMiterList *pPrev;
 };
 
-int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize);
-int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize);
+int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped);
+int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped);
 int AdjoiningGate_ListNetwork( Abc_Frame_t *pAbc );
 int AdjoiningGate_BFS( Abc_Frame_t *pAbc, int group_size);
 int AdjoiningGate_AddNode( Abc_Frame_t *pAbc, char *targetNode );
@@ -85,8 +85,10 @@ int nValidNodes;
 int nAvgKeyCount; */
 /* End Global Var for Probe Point Counter */
 
+int adjGrouping = 1;
+
 // CLAP Attack wrapper function -- entry point to CLAP
-int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize)
+int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped)
 {
     Abc_Ntk_t *pNtk;
     int result;
@@ -94,18 +96,19 @@ int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int 
     // Get the network that is read into ABC
     pNtk = Abc_FrameReadNtk(pAbc);
 
-    if (pNtk == NULL) {
-        Abc_Print(-1, "ClapAttack_ClapAttackAbc: Getting the target network has failed.\n");
-        return 0;
+    if (pNtk == NULL)
+    {
+      Abc_Print(-1, "ClapAttack_ClapAttackAbc: Getting the target network has failed.\n");
+      return 0;
     }
 
     // Call the main function
-    result = ClapAttack_ClapAttack(pAbc, pKey, pOutFile, alg, keysConsideredCutoff, keyElimCutoff, probeResolutionSize);
+    result = ClapAttack_ClapAttack(pAbc, pKey, pOutFile, alg, keysConsideredCutoff, keyElimCutoff, probeResolutionSize, grouped);
 
     return result;
 }
 
-int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize)
+int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped)
 {
   int i, j = 0, NumKeys, KeyIndex, MaxKeysConsidered, MaxNodesConsidered;
   Abc_Ntk_t *pNtk, *pCurKeyCnf;
@@ -145,30 +148,36 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
       j++;
   }
 
-printf("\nLaunching Leakage Analysis...\n\n");
+  printf("\nLaunching Leakage Analysis...\n\n");
 
-// Parameter for the maximum keys inputs that can be fanned into a node before ignoring it.
-// DEBUG: print information about the network
-//Abc_Print(1, "The network with name %s has:\n", Abc_NtkName(pNtk));
-//Abc_Print(1, "\t- %d primary inputs;\n", Abc_NtkPiNum(pNtk));
-//Abc_Print(1, "\t- %d primary outputs;\n", Abc_NtkPoNum(pNtk));
-//Abc_Print(1, "\t- %d AND gates;\n", Abc_NtkNodeNum(pNtk));
+  // Parameter for the maximum keys inputs that can be fanned into a node before ignoring it.
+  // DEBUG: print information about the network
+  //Abc_Print(1, "The network with name %s has:\n", Abc_NtkName(pNtk));
+  //Abc_Print(1, "\t- %d primary inputs;\n", Abc_NtkPiNum(pNtk));
+  //Abc_Print(1, "\t- %d primary outputs;\n", Abc_NtkPoNum(pNtk));
+  //Abc_Print(1, "\t- %d AND gates;\n", Abc_NtkNodeNum(pNtk));
 
-// Get the network that is read into ABC ... THIS IS THE BACKUP COPY FOR NOW.
-pNtk = Abc_FrameReadNtk(pAbc);
+  // Get the network that is read into ABC ... THIS IS THE BACKUP COPY FOR NOW.
+  pNtk = Abc_FrameReadNtk(pAbc);
 
-// Count keys
-NumKeys = ClapAttack_GetNumKeys( pNtk );
-ClapAttack_InitKeyStore( NumKeys, &GlobalBsiKeys );
-MaxProbes = 3;
+  // Count keys
+  NumKeys = ClapAttack_GetNumKeys( pNtk );
+  ClapAttack_InitKeyStore( NumKeys, &GlobalBsiKeys );
+  MaxProbes = 3;
 
-Abc_NtkForEachNode( pNtk, pNode, i )
-{
-  pNode->fMarkA = 0; // Set BFS visited for each node to 0
-  pNode->fMarkC = 0; // Set visited for each node to 0
-  pNode->fMarkB = 0; // Set leakage for each node to 0
-  pNode->iTemp = 0; // Set adjacency tag for each node to 0
-}
+  Abc_NtkForEachNode( pNtk, pNode, i )
+  {
+    pNode->fMarkA = 0; // Set BFS visited for each node to 0
+    pNode->fMarkC = 0; // Set visited for each node to 0
+    pNode->fMarkB = 0; // Set leakage for each node to 0
+    //printf("Adjacency Tag: %d\n", pNode->iTemp);
+  }
+
+  if(grouped && adjGrouping <= 1)
+  {
+    printf("ClapAttack_ScanLeakage: \"-g\" option selected but network is not BFS grouped.\n");
+    return 0;
+  }
   
   // How many nodes are we currently considering for the multi-node probe? This will iteratively increase
   // as we discover new nodes, so this should be left. It is not a parameter.
@@ -270,6 +279,12 @@ Abc_NtkForEachNode( pNtk, pNode, i )
       }
     }
 
+    /*Abc_NtkForEachNode( pNtk, pNode, i ) // Used for testing
+    {
+      printf("Adjacency Tag: %d\n", pNode->iTemp);
+    }
+    return 0;*/
+
     // If there were satisfying inputs identified, simulate the EOFM probe of these nodes with our inputs.
     if (pSatMiterList)
     {
@@ -317,11 +332,6 @@ Abc_NtkForEachNode( pNtk, pNode, i )
 
   // We are done -- cleanup and exit
   free( GlobalBsiKeys.KeyValue );
-
-  Abc_NtkForEachNode( pNtk, pNode, i )
-  {
-    pNode->iTemp = 0; // Set adjacency tag for each node to 0
-  }
   
   // List the network
   return AdjoiningGate_ListNetwork(pAbc);
@@ -382,13 +392,19 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
   int tag = 1, set = 1, i=0, level;
-  printf("BFS Adjacency Tags Updating...");
+  printf("BFS Adjacency Tags Updating...\n");
   pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
   if(pNtk == NULL)
   {
     Abc_Print(-1, "Getting the target network has failed.\n");
     return 0;
   }
+
+  Abc_NtkForEachNode( pNtk, pNode, i )
+  {
+    pNode->iTemp = 0; // Set adjacency tag for each node to 0
+  }
+
   //BFS ALGORITHM
   for(level = 1; level <= Abc_NtkLevel(pNtk); level++)
   {
@@ -409,7 +425,10 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
       }
     }
   }
-  return AdjoiningGate_ListNetwork(pAbc);
+
+  adjGrouping = group_size;
+  printf("Adjacency tags successfully updated. Run \"list\" command to list network.\n");
+  return 1; //AdjoiningGate_ListNetwork(pAbc);
 }
 
 // Adds a blank node to the network
@@ -1239,121 +1258,131 @@ int ClapAttack_UpdateGlobalKeyCnf(Abc_Ntk_t **ppCurKeyCnf, struct BSI_KeyData_t 
 
 // Isolate fan-in cone for a specific probe point (inclusive of probed node) for the network.
 // Run cone command... and return the fanout cone as a separate network
-int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pProbe, int probeResolution) {
-    int fUseAllCis = 0;
-    char PoTmpName[25];
-    Abc_Ntk_t *pNtkConeTmp, *pNtkTmp;
-    Abc_Obj_t *pPo, *pHeadNode, *pFanin, *pNode;
-    int j;
+int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pProbe, int probeResolution)
+{
+  int fUseAllCis = 0;
+  char PoTmpName[25];
+  Abc_Ntk_t *pNtkConeTmp, *pNtkTmp;
+  Abc_Obj_t *pPo, *pHeadNode, *pFanin, *pNode;
+  int j;
 
-    // Create cone for probed node
-    *ppNtkCone = Abc_NtkCreateCone(pNtk, pProbe, Abc_ObjName(pProbe), fUseAllCis);
+  // Create cone for probed node
+  *ppNtkCone = Abc_NtkCreateCone(pNtk, pProbe, Abc_ObjName(pProbe), fUseAllCis);
 
-    // Remove PO for the cone -- this is the output of the probed node
-    pPo = Abc_NtkPo(*ppNtkCone, 0);
-    pHeadNode = Abc_ObjChild0(pPo);
-    Abc_NtkDeleteObj(pPo);
-    assert(Abc_NtkPoNum(*ppNtkCone) == 0);
+  // Remove PO for the cone -- this is the output of the probed node
+  pPo = Abc_NtkPo(*ppNtkCone, 0);
+  pHeadNode = Abc_ObjChild0(pPo);
+  Abc_NtkDeleteObj(pPo);
+  assert(Abc_NtkPoNum(*ppNtkCone) == 0);
 
-    // Re-sort network
-    Abc_NtkOrderCisCos(*ppNtkCone);
+  // Re-sort network
+  Abc_NtkOrderCisCos(*ppNtkCone);
 
-    // Set the output of the network to the input of the probe point (i.e. the probed node)
-    Abc_ObjForEachFanin(pHeadNode, pFanin, j) {
-        pNode = Abc_NtkCreatePo(*ppNtkCone);
-        Abc_ObjAddFanin(pNode, pFanin);
-        sprintf(PoTmpName, "po%d", j);
-        Abc_ObjAssignName(pNode, PoTmpName, NULL);
-    }
+  // Set the output of the network to the input of the probe point (i.e. the probed node)
+  Abc_ObjForEachFanin(pHeadNode, pFanin, j)
+  {
+    pNode = Abc_NtkCreatePo(*ppNtkCone);
+    Abc_ObjAddFanin(pNode, pFanin);
+    sprintf(PoTmpName, "po%d", j);
+    Abc_ObjAssignName(pNode, PoTmpName, NULL);
+  }
 
-    // Re-sort network
-    Abc_NtkOrderCisCos(*ppNtkCone);
+  // Re-sort network
+  Abc_NtkOrderCisCos(*ppNtkCone);
 
-    // Cut off the head when we're done with it. This essentially removes the probed-node itself.
-    Abc_NtkDeleteObj(pHeadNode);
+  // Cut off the head when we're done with it. This essentially removes the probed-node itself.
+  Abc_NtkDeleteObj(pHeadNode);
 
-    int *ignoreFanins = (int *)malloc(probeResolution * sizeof(int));
-    Abc_Obj_t **pProbes = (Abc_Obj_t **)malloc(probeResolution * sizeof(Abc_Obj_t *));
+  int *ignoreFanins = (int *)malloc(probeResolution * sizeof(int));
+  Abc_Obj_t **pProbes = (Abc_Obj_t **)malloc(probeResolution * sizeof(Abc_Obj_t *));
 
-    Abc_Obj_t *pCurrentProbe = pProbe;
-    int totalFanins = j;
+  Abc_Obj_t *pCurrentProbe = pProbe;
+  int totalFanins = j;
 
-    // Initial values for the first iteration
-    ignoreFanins[0] = -1;
-    pProbes[0] = pProbe;
-    for (int resolutionLevel = 1; resolutionLevel < probeResolution && Abc_ObjFanoutNum(pCurrentProbe);
-         resolutionLevel++) {
-        Abc_Obj_t *pNextProbe = Abc_ObjFanout0(pCurrentProbe);
+  // Initial values for the first iteration
+  ignoreFanins[0] = -1;
+  pProbes[0] = pProbe;
+  for (int resolutionLevel = 1; resolutionLevel < probeResolution && Abc_ObjFanoutNum(pCurrentProbe); resolutionLevel++)
+  {
+    Abc_Obj_t *pNextProbe = Abc_ObjFanout0(pCurrentProbe);
 
-        if (!Abc_ObjIsPo(pNextProbe)) {
-            int ignoreFanin = -1;
-            int i;
-            Abc_ObjForEachFanin(pNextProbe, pFanin, i) {
-                if (pFanin == pCurrentProbe) {
-                    ignoreFanin = i;
-                }
-            }
-
-            // Only store the current values for future iterations if there is a next iteration
-            if (resolutionLevel + 1 < probeResolution) {
-                ignoreFanins[resolutionLevel + 1] = ignoreFanin;
-                pProbes[resolutionLevel + 1] = pNextProbe;
-            }
-
-            pNtkConeTmp = Abc_NtkCreateCone(pNtk, pNextProbe, Abc_ObjName(pNextProbe), fUseAllCis);
-            pPo = Abc_NtkPo(pNtkConeTmp, 0);
-            pHeadNode = Abc_ObjChild0(pPo);
-            Abc_NtkDeleteObj(pPo);
-            assert(Abc_NtkPoNum(pNtkConeTmp) == 0);
-
-            Abc_ObjForEachFanin(pHeadNode, pFanin, i) {
-                if (i != ignoreFanin) {
-                    pNode = Abc_NtkCreatePo(pNtkConeTmp);
-                    Abc_ObjAddFanin(pNode, pFanin);
-                    sprintf(PoTmpName, "po%d", totalFanins + i);
-                    Abc_ObjAssignName(pNode, PoTmpName, NULL);
-                }
-            }
-            totalFanins += i;
-
-            Abc_NtkDeleteObj(pHeadNode);
-            Abc_NtkOrderCisCos(pNtkConeTmp);
-
-            pNtkTmp = Abc_NtkStrash(*ppNtkCone, 0, 1, 0);
-            Abc_NtkDelete(*ppNtkCone);
-            *ppNtkCone = pNtkTmp;
-
-            pNtkTmp = Abc_NtkStrash(pNtkConeTmp, 0, 1, 0);
-            Abc_NtkDelete(pNtkConeTmp);
-            pNtkConeTmp = pNtkTmp;
-
-            if (!Abc_NtkAppendSilent(*ppNtkCone, pNtkConeTmp, 1)) {
-                Abc_Print(-1, "Appending the networks failed.\n");
-                exit(0);
-                return 1;
-            }
-            Abc_NtkDelete(pNtkConeTmp);
-
-            pNtkTmp = Abc_NtkToLogic(*ppNtkCone);
-            Abc_NtkDelete(*ppNtkCone);
-            *ppNtkCone = pNtkTmp;
-
-            pCurrentProbe = pNextProbe;
+    if (!Abc_ObjIsPo(pNextProbe))
+    {
+      int ignoreFanin = -1;
+      int i;
+      Abc_ObjForEachFanin(pNextProbe, pFanin, i)
+      {
+        if (pFanin == pCurrentProbe)
+        {
+          ignoreFanin = i;
         }
-    }
+      }
 
-    // make sure that everything is okay
-    if (!Abc_NtkCheck(*ppNtkCone)) {
-        printf("Abc_NtkOrPos: The network check has failed.\n");
-        free(ignoreFanins);
-        free(pProbes);
+      // Only store the current values for future iterations if there is a next iteration
+      if (resolutionLevel + 1 < probeResolution)
+      {
+        ignoreFanins[resolutionLevel + 1] = ignoreFanin;
+        pProbes[resolutionLevel + 1] = pNextProbe;
+      }
+
+      pNtkConeTmp = Abc_NtkCreateCone(pNtk, pNextProbe, Abc_ObjName(pNextProbe), fUseAllCis);
+      pPo = Abc_NtkPo(pNtkConeTmp, 0);
+      pHeadNode = Abc_ObjChild0(pPo);
+      Abc_NtkDeleteObj(pPo);
+      assert(Abc_NtkPoNum(pNtkConeTmp) == 0);
+
+      Abc_ObjForEachFanin(pHeadNode, pFanin, i)
+      {
+        if (i != ignoreFanin)
+        {
+          pNode = Abc_NtkCreatePo(pNtkConeTmp);
+          Abc_ObjAddFanin(pNode, pFanin);
+          sprintf(PoTmpName, "po%d", totalFanins + i);
+          Abc_ObjAssignName(pNode, PoTmpName, NULL);
+        }
+      }
+      totalFanins += i;
+
+      Abc_NtkDeleteObj(pHeadNode);
+      Abc_NtkOrderCisCos(pNtkConeTmp);
+
+      pNtkTmp = Abc_NtkStrash(*ppNtkCone, 0, 1, 0);
+      Abc_NtkDelete(*ppNtkCone);
+      *ppNtkCone = pNtkTmp;
+
+      pNtkTmp = Abc_NtkStrash(pNtkConeTmp, 0, 1, 0);
+      Abc_NtkDelete(pNtkConeTmp);
+      pNtkConeTmp = pNtkTmp;
+
+      if (!Abc_NtkAppendSilent(*ppNtkCone, pNtkConeTmp, 1))
+      {
+        Abc_Print(-1, "Appending the networks failed.\n");
+        exit(0);
         return 1;
-    }
+      }
+      Abc_NtkDelete(pNtkConeTmp);
 
+      pNtkTmp = Abc_NtkToLogic(*ppNtkCone);
+      Abc_NtkDelete(*ppNtkCone);
+      *ppNtkCone = pNtkTmp;
+
+      pCurrentProbe = pNextProbe;
+    }
+  }
+
+  // make sure that everything is okay
+  if (!Abc_NtkCheck(*ppNtkCone))
+  {
+    printf("Abc_NtkOrPos: The network check has failed.\n");
     free(ignoreFanins);
     free(pProbes);
+    return 1;
+  }
 
-    return 0;
+  free(ignoreFanins);
+  free(pProbes);
+
+  return 0;
 }
 
 // Clean the logic cone isolated as an individual network by removing unused/unneeded logic.
