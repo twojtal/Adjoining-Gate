@@ -23,7 +23,7 @@ void ClapAttack_Init(Abc_Frame_t * pAbc) {
 
 int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
 {
-  int fVerbose, grouped = 0;
+  int fVerbose, grouped = 0, listAdjOrder = 0;
   int c, result, alg = 0, keysConsideredCutoff = 7, probeResolutionSize = 1;
   char *pKey = "0000010010001101111101010111101000000010010011110010010110111110011110000010100110110111", *pOutFile = NULL; // Hard-code the key in
   float keyElimCutoff = 0.006125;
@@ -33,10 +33,13 @@ int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
 
   // get arguments
   Extra_UtilGetoptReset();
-  while ((c = Extra_UtilGetopt(argc, argv, "gclovrh")) != EOF)
+  while ((c = Extra_UtilGetopt(argc, argv, "agclovrh")) != EOF)
   {
     switch (c)
     {
+    case 'a':
+      listAdjOrder = 1;
+      break;
     case 'g':
       grouped = 1;
       break;
@@ -116,7 +119,7 @@ int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
   }
 
   // call the main function
-  result = ClapAttack_ClapAttackAbc(pAbc, pKey, pOutFile, alg, keysConsideredCutoff, keyElimCutoff, probeResolutionSize, grouped);
+  result = ClapAttack_ClapAttackAbc(pAbc, pKey, pOutFile, alg, keysConsideredCutoff, keyElimCutoff, probeResolutionSize, grouped, listAdjOrder);
 
   // print verbose information if the verbose mode is on
   if (fVerbose)
@@ -135,6 +138,8 @@ int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
   usage:
     Abc_Print(-2, "usage: scan [-clovrh] -k <key> \n");
     Abc_Print(-2, "\t           The physical portion of the CLAP attack in ABC.\n");
+    Abc_Print(-2, "\t-a         : list nodes in adjacency tag order \n");
+    Abc_Print(-2, "\t-g         : scan the groups based on adjacency tag (network must first be BFS grouped)\n");
     Abc_Print(-2, "\t-k <key>   : input the correct oracle key value for EOFM probing simulation \n");
     Abc_Print(-2, "\t-m         : use multi-node probing algorithm (alg. 2) for CLAP attack, omitting this command uses fixed EOFM probe algorithm (alg. 1)\n");
     Abc_Print(-2, "\t-c <int>   : maximum number of key inputs for a node to be considered for EOFM probing [default = 7]\n");
@@ -148,7 +153,7 @@ int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
 
 static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **argv )
 {
-  int fVerbose;
+  int fVerbose, adjGrouping = 0;
   int c, result;
   
   // set defaults
@@ -156,8 +161,11 @@ static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **ar
 
   // get arguments
   Extra_UtilGetoptReset();
-  while ((c = Extra_UtilGetopt(argc, argv, "vh")) != EOF) {
+  while ((c = Extra_UtilGetopt(argc, argv, "avh")) != EOF) {
     switch (c) {
+    case 'a':
+      adjGrouping = 1;
+      break;
     case 'v':
       fVerbose ^= 1;
       break;
@@ -176,7 +184,7 @@ static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **ar
   }
   
   // call the main function
-  result = AdjoiningGate_ListNetwork(pAbc);
+  result = AdjoiningGate_ListNetwork(pAbc, adjGrouping);
 
   // print verbose information if the verbose mode is on
   if (fVerbose)
@@ -194,6 +202,7 @@ static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **ar
   usage:
     Abc_Print(-2, "usage: list [-vh]\n");
     Abc_Print(-2, "\t           List all the nodes in the network.\n");
+    Abc_Print(-2, "\t-a         : list nodes in adjacency tag order \n");
     Abc_Print(-2, "\t-v         : toggle printing verbose information [default = %s]\n", fVerbose ? "yes" : "no");
     Abc_Print(-2, "\t-h         : print the command usage \n");
   return 1;

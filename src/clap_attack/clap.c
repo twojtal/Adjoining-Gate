@@ -32,9 +32,9 @@ struct SatMiterList {
     struct SatMiterList *pPrev;
 };
 
-int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped);
-int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped);
-int AdjoiningGate_ListNetwork( Abc_Frame_t *pAbc );
+int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder);
+int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder);
+int AdjoiningGate_ListNetwork( Abc_Frame_t *pAbc, int adjGrouping);
 int AdjoiningGate_BFS( Abc_Frame_t *pAbc, int group_size);
 int AdjoiningGate_AddNode( Abc_Frame_t *pAbc, char *targetNode );
 int AdjoiningGate_RemoveNode( Abc_Frame_t *pAbc, char *delNode );
@@ -88,7 +88,7 @@ int nAvgKeyCount; */
 int adjGrouping = 1;
 
 // CLAP Attack wrapper function -- entry point to CLAP
-int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped)
+int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder)
 {
     Abc_Ntk_t *pNtk;
     int result;
@@ -103,12 +103,19 @@ int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int 
     }
 
     // Call the main function
-    result = ClapAttack_ClapAttack(pAbc, pKey, pOutFile, alg, keysConsideredCutoff, keyElimCutoff, probeResolutionSize, grouped);
+    if(grouped)
+    {
+      result = ClapAttack_ClapAttack(pAbc, pKey, pOutFile, alg, keysConsideredCutoff, keyElimCutoff, adjGrouping, grouped, listAdjOrder);
+    }
+    else
+    {
+      result = ClapAttack_ClapAttack(pAbc, pKey, pOutFile, alg, keysConsideredCutoff, keyElimCutoff, probeResolutionSize, grouped, listAdjOrder);
+    }
 
     return result;
 }
 
-int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped)
+int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder)
 {
   int i, j = 0, NumKeys, KeyIndex, MaxKeysConsidered, MaxNodesConsidered;
   Abc_Ntk_t *pNtk, *pCurKeyCnf;
@@ -170,13 +177,16 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
     pNode->fMarkA = 0; // Set BFS visited for each node to 0
     pNode->fMarkC = 0; // Set visited for each node to 0
     pNode->fMarkB = 0; // Set leakage for each node to 0
-    //printf("Adjacency Tag: %d\n", pNode->iTemp);
   }
 
   if(grouped && adjGrouping <= 1)
   {
-    printf("ClapAttack_ScanLeakage: \"-g\" option selected but network is not BFS grouped.\n");
+    printf("Leakage Scan: \"-g\" option selected but network is not BFS grouped.\n");
     return 0;
+  }
+  else if(grouped)
+  {
+    printf("BFS grouping of size %d detected. Proceeding with group scan...\n", adjGrouping);
   }
   
   // How many nodes are we currently considering for the multi-node probe? This will iteratively increase
@@ -281,7 +291,7 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
 
     /*Abc_NtkForEachNode( pNtk, pNode, i ) // Used for testing
     {
-      printf("Adjacency Tag: %d\n", pNode->iTemp);
+      printf("Adjacency Tag: %d\n", pNode->adjTag);
     }
     return 0;*/
 
@@ -334,10 +344,10 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
   free( GlobalBsiKeys.KeyValue );
   
   // List the network
-  return AdjoiningGate_ListNetwork(pAbc);
+  return AdjoiningGate_ListNetwork(pAbc, listAdjOrder);
 }
 
-int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc )
+int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping)
 {
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
@@ -352,34 +362,81 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc )
   }
 
   printf("Network List:\n");
-  Abc_NtkForEachNode( pNtk, pNode, i )
+  if(adjGrouping)
   {
-    printf("Node %s:\t", Abc_ObjName(pNode));
-    if(pNode->fMarkC) //If the node was visited (Leaks Key Information)
+    int highestTag = 0;
+    Abc_NtkForEachNode( pNtk, pNode, i )
     {
-      printf("Visited = true,\t\t");
-      NodesVisited++;
+      if(pNode->adjTag > highestTag)
+      {
+        highestTag = pNode->adjTag;
+      }
     }
-    else
+    for(int j = 0; j<=highestTag; j++)
     {
-      printf("Visited = false,\t");
+      Abc_NtkForEachNode( pNtk, pNode, i )
+      {
+        if(pNode->adjTag == j)
+        {
+          printf("Node %s:\t", Abc_ObjName(pNode));
+          if(pNode->fMarkC) //If the node was visited (Leaks Key Information)
+          {
+            printf("Visited = true,\t\t");
+            NodesVisited++;
+          }
+          else
+          {
+            printf("Visited = false,\t");
+          }
+          if(pNode->fMarkB) //If the node was visited (Leaks Key Information)
+          {
+            printf("Leaks = true,\t");
+            NodesLeaking++;
+          }
+          else
+          {
+            printf("Leaks = false,\t");
+          }
+          printf("Fanin = %d,\t", Abc_ObjFaninNum(pNode));
+          printf("Fanout = %d,\t", Abc_ObjFanoutNum(pNode));
+          printf("Level = %d\t", Abc_ObjLevel(pNode));
+          printf("Adj. Tag = %d\n", pNode->adjTag);
+          TotalNumNodes++;
+        }
+      }
     }
-    if(pNode->fMarkB) //If the node was visited (Leaks Key Information)
+  }
+  else
+  {
+    Abc_NtkForEachNode( pNtk, pNode, i )
     {
-      printf("Leaks = true,\t");
-      NodesLeaking++;
+      printf("Node %s:\t", Abc_ObjName(pNode));
+      if(pNode->fMarkC) //If the node was visited (Leaks Key Information)
+      {
+        printf("Visited = true,\t\t");
+        NodesVisited++;
+      }
+      else
+      {
+        printf("Visited = false,\t");
+      }
+      if(pNode->fMarkB) //If the node was visited (Leaks Key Information)
+      {
+        printf("Leaks = true,\t");
+        NodesLeaking++;
+      }
+      else
+      {
+        printf("Leaks = false,\t");
+      }
+      printf("Fanin = %d,\t", Abc_ObjFaninNum(pNode));
+      printf("Fanout = %d,\t", Abc_ObjFanoutNum(pNode));
+      printf("Level = %d\t", Abc_ObjLevel(pNode));
+      printf("Adj. Tag = %d\n", pNode->adjTag);
+      //Abc_ObjPrint(file, pNode); //This function can print the node to a file!
+      TotalNumNodes++;
+      //pNode->fMarkC = 0; // Reset markc so we can terminate without seg-fault
     }
-    else
-    {
-      printf("Leaks = false,\t");
-    }
-    printf("Fanin = %d,\t", Abc_ObjFaninNum(pNode));
-    printf("Fanout = %d,\t", Abc_ObjFanoutNum(pNode));
-    printf("Level = %d\t", Abc_ObjLevel(pNode));
-    printf("Adj. Tag = %d\n", pNode->iTemp);
-    //Abc_ObjPrint(file, pNode); //This function can print the node to a file!
-    TotalNumNodes++;
-    //pNode->fMarkC = 0; // Reset markc so we can terminate without seg-fault
   }
   printf("\nNodes visited: %d\n", NodesVisited);
   printf("Nodes leaking key information: %d\n", NodesLeaking);
@@ -400,11 +457,6 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
     return 0;
   }
 
-  Abc_NtkForEachNode( pNtk, pNode, i )
-  {
-    pNode->iTemp = 0; // Set adjacency tag for each node to 0
-  }
-
   //BFS ALGORITHM
   for(level = 1; level <= Abc_NtkLevel(pNtk); level++)
   {
@@ -412,7 +464,7 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
     {
       if(Abc_ObjLevel(pNode) == level)
       {
-        pNode->iTemp = tag;
+        pNode->adjTag = tag;
         if (set == group_size)
         {
           set = 1;
@@ -428,7 +480,7 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
 
   adjGrouping = group_size;
   printf("Adjacency tags successfully updated. Run \"list\" command to list network.\n");
-  return 1; //AdjoiningGate_ListNetwork(pAbc);
+  return 1;
 }
 
 // Adds a blank node to the network
