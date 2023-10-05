@@ -1345,18 +1345,55 @@ int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pP
   // Cut off the head when we're done with it. This essentially removes the probed-node itself.
   Abc_NtkDeleteObj(pHeadNode);
 
-  int *ignoreFanins = (int *)malloc(probeResolution * sizeof(int));
-  Abc_Obj_t **pProbes = (Abc_Obj_t **)malloc(probeResolution * sizeof(Abc_Obj_t *));
+  //int *ignoreFanins = (int *)malloc(probeResolution * sizeof(int));
+  //Abc_Obj_t **pProbes = (Abc_Obj_t **)malloc(probeResolution * sizeof(Abc_Obj_t *));
 
   Abc_Obj_t *pCurrentProbe = pProbe;
   int totalFanins = j;
 
   // Initial values for the first iteration
-  ignoreFanins[0] = -1;
-  pProbes[0] = pProbe;
+  //ignoreFanins[0] = -1;
+  //pProbes[0] = pProbe;
+
+  char nameArr[adjGrouping][10]; // Array to store node names
+  strcpy(nameArr[0], Abc_ObjName(pCurrentProbe)); // Store the first node name into the array
+  // Loop for traversing other probes
+  //printf("Group %d: ",pCurrentProbe->adjTag);
   for (int resolutionLevel = 1; resolutionLevel < probeResolution && Abc_ObjFanoutNum(pCurrentProbe); resolutionLevel++)
   {
-    Abc_Obj_t *pNextProbe = Abc_ObjFanout0(pCurrentProbe);
+    Abc_Obj_t *pNextProbe;
+    if (probeResolution > 1 && probeResolution == adjGrouping) // Making sure this is a grouped scan
+    {
+      int k;
+      Abc_NtkForEachNode(pNtk, pNode, k) // Traverse nodes in the network to find other grouped nodes
+      {
+        if (pNode->adjTag == pCurrentProbe->adjTag) // If in the same group
+        {
+          //printf("Same Tag: %s ", Abc_ObjName(pNode));
+          int new = 1;
+          for (int n = 0; n < adjGrouping; n++) // Check if element already exists in array
+          {
+            if (strcmp(Abc_ObjName(pNode), nameArr[n]) == 0) // If exists, break
+            {
+              new = 0;
+              break;
+            }
+          }
+          if (new == 1) // Unvisited node, add it to the array and process it
+          {
+            strcpy(nameArr[resolutionLevel], Abc_ObjName(pNode));
+            pNextProbe = pNode;
+            //printf("pNextProbe: %s ,", Abc_ObjName(pNextProbe));
+            break;
+          }
+        }
+      }
+    }
+    else // If not a grouped scan, proceed as usual
+    {
+      //printf("WARNING: Scanning in regular resolution grouping mode!");
+      pNextProbe = Abc_ObjFanout0(pCurrentProbe);
+    }
 
     if (!Abc_ObjIsPo(pNextProbe))
     {
@@ -1371,11 +1408,11 @@ int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pP
       }
 
       // Only store the current values for future iterations if there is a next iteration
-      if (resolutionLevel + 1 < probeResolution)
+      /*if (resolutionLevel + 1 < probeResolution)
       {
         ignoreFanins[resolutionLevel + 1] = ignoreFanin;
         pProbes[resolutionLevel + 1] = pNextProbe;
-      }
+      }*/
 
       pNtkConeTmp = Abc_NtkCreateCone(pNtk, pNextProbe, Abc_ObjName(pNextProbe), fUseAllCis);
       pPo = Abc_NtkPo(pNtkConeTmp, 0);
@@ -1421,18 +1458,25 @@ int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pP
       pCurrentProbe = pNextProbe;
     }
   }
+  //printf("\n"); // TEST STATEMENT
+
+  /*for(int x = 0; x<adjGrouping; x++) //TEST STATEMENT FOR ARRAY
+  {
+      printf("%s, ",nameArr[x]);
+  }
+  printf("\n");*/
 
   // make sure that everything is okay
   if (!Abc_NtkCheck(*ppNtkCone))
   {
     printf("Abc_NtkOrPos: The network check has failed.\n");
-    free(ignoreFanins);
-    free(pProbes);
+    //free(ignoreFanins);
+    //free(pProbes);
     return 1;
   }
 
-  free(ignoreFanins);
-  free(pProbes);
+  //free(ignoreFanins);
+  //free(pProbes);
 
   return 0;
 }
