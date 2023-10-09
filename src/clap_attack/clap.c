@@ -85,7 +85,8 @@ int nValidNodes;
 int nAvgKeyCount; */
 /* End Global Var for Probe Point Counter */
 
-int adjGrouping = 1;
+int adjGrouping = 1; //Global variable for storing grouping size
+int highestTag = 0; //Global variable for storing highest adjacency tag
 
 // CLAP Attack wrapper function -- entry point to CLAP
 int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder)
@@ -174,9 +175,9 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
 
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
-    pNode->fMarkA = 0; // Set BFS visited for each node to 0
-    pNode->fMarkC = 0; // Set visited for each node to 0
+    pNode->fMarkA = 0;
     pNode->fMarkB = 0; // Set leakage for each node to 0
+    pNode->fMarkC = 0; // Set visited for each node to 0
   }
 
   if(grouped && adjGrouping <= 1)
@@ -478,6 +479,7 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
     }
   }
 
+  highestTag = tag;
   adjGrouping = group_size;
   printf("Adjacency tags successfully updated. Run \"list\" command to list network.\n");
   return 1;
@@ -510,6 +512,12 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode ) //Add gate ty
       newNode = Abc_NtkCreateNodeOr( pNtk, vFanins);
       newNode->Level = Abc_ObjLevel(pNode); //Transfer the level of the node
       Abc_ObjAddFanin(Abc_NtkCreatePo( pNtk ), newNode); //Creating primary output for added node
+      if(highestTag!=0 && adjGrouping>1)
+      {
+        newNode->adjTag = pNode->adjTag; //Add new node to the adjacency group
+        highestTag++; //Incrementing the highest tag
+        pNode->adjTag = highestTag; //Putting the target node in its own group
+      }
       printf("\nNode %s added.\n", Abc_ObjName( newNode ));
       return 1;
     }
