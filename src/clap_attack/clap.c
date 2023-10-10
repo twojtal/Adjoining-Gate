@@ -34,7 +34,7 @@ struct SatMiterList {
 
 int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder);
 int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder);
-int AdjoiningGate_ListNetwork( Abc_Frame_t *pAbc, int adjGrouping);
+int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysConsideredCutoff);
 int AdjoiningGate_BFS( Abc_Frame_t *pAbc, int group_size);
 int AdjoiningGate_AddNode( Abc_Frame_t *pAbc, char *targetNode );
 int AdjoiningGate_RemoveNode( Abc_Frame_t *pAbc, char *delNode );
@@ -178,6 +178,7 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
     pNode->fMarkA = 0;
     pNode->fMarkB = 0; // Set leakage for each node to 0
     pNode->fMarkC = 0; // Set visited for each node to 0
+    pNode->KIF = 0;
   }
 
   if(grouped && adjGrouping <= 1)
@@ -345,10 +346,10 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
   free( GlobalBsiKeys.KeyValue );
   
   // List the network
-  return AdjoiningGate_ListNetwork(pAbc, listAdjOrder);
+  return AdjoiningGate_ListNetwork(pAbc, listAdjOrder, keysConsideredCutoff);
 }
 
-int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping)
+int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysConsideredCutoff)
 {
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
@@ -380,7 +381,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping)
         if(pNode->adjTag == j)
         {
           printf("Node %s:\t", Abc_ObjName(pNode));
-          if(pNode->fMarkC) //If the node was visited (Leaks Key Information)
+          if(pNode->fMarkC) //If the node was visited
           {
             printf("Visited = true,\t\t");
             NodesVisited++;
@@ -389,7 +390,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping)
           {
             printf("Visited = false,\t");
           }
-          if(pNode->fMarkB) //If the node was visited (Leaks Key Information)
+          if(pNode->fMarkB) //If the node leaks key information
           {
             printf("Leaks = true,\t");
             NodesLeaking++;
@@ -401,8 +402,14 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping)
           printf("Fanin = %d,\t", Abc_ObjFaninNum(pNode));
           printf("Fanout = %d,\t", Abc_ObjFanoutNum(pNode));
           printf("Level = %d\t", Abc_ObjLevel(pNode));
+          printf("KIF = %d \t", pNode->KIF);
           printf("Adj. Tag = %d\n", pNode->adjTag);
           TotalNumNodes++;
+
+          if(pNode->fMarkC == 1 && pNode->fMarkB == 0 && pNode->KIF <= keysConsideredCutoff) //If visited but doesn't leak
+          {
+            printf("Node visited but doesn't leak!\n");
+          }
         }
       }
     }
@@ -433,10 +440,16 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping)
       printf("Fanin = %d,\t", Abc_ObjFaninNum(pNode));
       printf("Fanout = %d,\t", Abc_ObjFanoutNum(pNode));
       printf("Level = %d\t", Abc_ObjLevel(pNode));
+      printf("KIF = %d \t", pNode->KIF);
       printf("Adj. Tag = %d\n", pNode->adjTag);
       //Abc_ObjPrint(file, pNode); //This function can print the node to a file!
       TotalNumNodes++;
       //pNode->fMarkC = 0; // Reset markc so we can terminate without seg-fault
+
+      if(pNode->fMarkC == 1 && pNode->fMarkB == 0 && pNode->KIF > 0 && pNode->KIF <= keysConsideredCutoff) //If visited but doesn't leak
+      {
+        printf("Node visited but doesn't leak!\n");
+      }
     }
   }
   printf("\nNodes visited: %d\n", NodesVisited);
@@ -852,18 +865,27 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
             MiterStatus = 1;
 
             // Count the key inputs in the cone. If there are too many, ignore the node and halt traversal.
-            Abc_NtkForEachPi(pNtkCone, pPi, j) {
-                // Are we looking at a key input?
-                if (strstr(Abc_ObjName(pPi), "key")) {
-                    if (!ClapAttack_SetKnownKeys(pNtkCone, pPi, pGlobalBsiKeys)) {
-                        if (NumKeys < MaxKeysConsidered) strcpy(KeyNameTmp[NumKeys], Abc_ObjName(pPi));
-                        NumKeys++;
-                    } else {
-                        ppNodeFreeList[NumKnownKeys] = pPi;
-                        NumKnownKeys++;
-                    }
+            Abc_NtkForEachPi(pNtkCone, pPi, j)
+            {
+              // Are we looking at a key input?
+              if (strstr(Abc_ObjName(pPi), "key"))
+              {
+                if (!ClapAttack_SetKnownKeys(pNtkCone, pPi, pGlobalBsiKeys))
+                {
+                  if (NumKeys < MaxKeysConsidered)
+                  {
+                    strcpy(KeyNameTmp[NumKeys], Abc_ObjName(pPi));
+                  }
+                  NumKeys++;
                 }
+                else
+                {
+                  ppNodeFreeList[NumKnownKeys] = pPi;
+                  NumKnownKeys++;
+                }
+              }
             }
+            pNode->KIF = NumKeys;
 
             // Delete known keys from cone.
             if (NumKnownKeys) ClapAttack_DelKnownKeys(ppNodeFreeList, NumKnownKeys);

@@ -154,7 +154,7 @@ int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
 static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **argv )
 {
   int fVerbose, adjGrouping = 0;
-  int c, result;
+  int c, result, keysConsideredCutoff = 7;
   
   // set defaults
   fVerbose = 0;
@@ -184,7 +184,7 @@ static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **ar
   }
   
   // call the main function
-  result = AdjoiningGate_ListNetwork(pAbc, adjGrouping);
+  result = AdjoiningGate_ListNetwork(pAbc, adjGrouping, keysConsideredCutoff);
 
   // print verbose information if the verbose mode is on
   if (fVerbose)
