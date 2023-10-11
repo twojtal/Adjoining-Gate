@@ -175,7 +175,6 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
 
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
-    pNode->fMarkA = 0;
     pNode->fMarkB = 0; // Set leakage for each node to 0
     pNode->fMarkC = 0; // Set visited for each node to 0
     pNode->KIF = 0;
@@ -406,10 +405,10 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
           printf("Adj. Tag = %d\n", pNode->adjTag);
           TotalNumNodes++;
 
-          if(pNode->fMarkC == 1 && pNode->fMarkB == 0 && pNode->KIF <= keysConsideredCutoff) //If visited but doesn't leak
+          /*if(pNode->fMarkC == 1 && pNode->fMarkB == 0 && pNode->KIF <= keysConsideredCutoff) //If visited but doesn't leak
           {
             printf("Node visited but doesn't leak!\n");
-          }
+          }*/
         }
       }
     }
@@ -419,7 +418,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
     Abc_NtkForEachNode( pNtk, pNode, i )
     {
       printf("Node %s:\t", Abc_ObjName(pNode));
-      if(pNode->fMarkC) //If the node was visited (Leaks Key Information)
+      if(pNode->fMarkC) //If the node was visited
       {
         printf("Visited = true,\t\t");
         NodesVisited++;
@@ -428,7 +427,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
       {
         printf("Visited = false,\t");
       }
-      if(pNode->fMarkB) //If the node was visited (Leaks Key Information)
+      if(pNode->fMarkB) //If the node leaks key information
       {
         printf("Leaks = true,\t");
         NodesLeaking++;
@@ -442,14 +441,13 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
       printf("Level = %d\t", Abc_ObjLevel(pNode));
       printf("KIF = %d \t", pNode->KIF);
       printf("Adj. Tag = %d\n", pNode->adjTag);
-      //Abc_ObjPrint(file, pNode); //This function can print the node to a file!
+      //Abc_ObjPrint(file, pNode); //This function can print the node to a file
       TotalNumNodes++;
-      //pNode->fMarkC = 0; // Reset markc so we can terminate without seg-fault
 
-      if(pNode->fMarkC == 1 && pNode->fMarkB == 0 && pNode->KIF > 0 && pNode->KIF <= keysConsideredCutoff) //If visited but doesn't leak
+      /*if(pNode->fMarkC == 1 && pNode->fMarkB == 0 && pNode->KIF > 0 && pNode->KIF <= keysConsideredCutoff) //If visited but doesn't leak
       {
         printf("Node visited but doesn't leak!\n");
-      }
+      }*/
     }
   }
   printf("\nNodes visited: %d\n", NodesVisited);
@@ -891,37 +889,40 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
             if (NumKnownKeys) ClapAttack_DelKnownKeys(ppNodeFreeList, NumKnownKeys);
 
             // Can we evaluate this node (i.e. does it have the currently considered number of keys as input)?
-            if ((NumKeys == MaxKeysConsidered) && NumKeys) {
-                // Generate the logical miter to infer whether key leakage occurs at this node.
-                //printf("Evaluating node %s\n", Abc_ObjName(pNode));
-                MiterStatus = ClapAttack_MakeMiterHeuristic(pNtkCone, *ppCurKeyCnf, &pNtkMiter);
+            if ((NumKeys == MaxKeysConsidered) && NumKeys)
+            {
+              // Generate the logical miter to infer whether key leakage occurs at this node.
+              // printf("Evaluating node %s\n", Abc_ObjName(pNode));
+              MiterStatus = ClapAttack_MakeMiterHeuristic(pNtkCone, *ppCurKeyCnf, &pNtkMiter);
 
-                // Did the miter generate successfully?
-                if (!MiterStatus) {
-                    // Run SAT on the generated miter to find sensitizing inputs
-                    SatStatus = ClapAttack_RunSat(pNtkMiter);
+              // Did the miter generate successfully?
+              if (!MiterStatus)
+              {
+                // Run SAT on the generated miter to find sensitizing inputs
+                SatStatus = ClapAttack_RunSat(pNtkMiter);
 
-          // Did SAT return sensitizing inputs?
-          if (!SatStatus)
-          {
-            // Update SAT node list with new Sat miter
-            pNode->fMarkB = 1; //Node leaks key information
-            pNode->fMarkC = 1; //Node visited
-            (*pNumProbes)++;
-            //ClapAttack_UpdateSatMiterList( ppSatMiterList, &pNode, pNtkMiter, NumKeys, KeyNameTmp, 1, 1.0/(1<<(MaxKeysConsidered-1)), pNtkMiter->pModel );
-          }
-          else
-          {
-            // Node is UNSAT, but has the right number of keys... It's useless so mark it
-            pNode->fMarkC = 1;
-          }
-
-                } else {
-                    printf("Mitering failed. Proceed.\n");
+                // Did SAT return sensitizing inputs?
+                if (!SatStatus)
+                {
+                  // Update SAT node list with new Sat miter
+                  pNode->fMarkB = 1; // Node leaks key information
+                  pNode->fMarkC = 1; // Node visited
+                  (*pNumProbes)++;
+                  // ClapAttack_UpdateSatMiterList( ppSatMiterList, &pNode, pNtkMiter, NumKeys, KeyNameTmp, 1, 1.0/(1<<(MaxKeysConsidered-1)), pNtkMiter->pModel );
                 }
+                else
+                {
+                  // Node is UNSAT, but has the right number of keys... It's useless so mark it
+                  pNode->fMarkC = 1;
+                }
+              }
+              else
+              {
+                printf("Mitering failed. Proceed.\n");
+              }
 
-                // Cleanup
-                Abc_NtkDelete(pNtkMiter);
+              // Cleanup
+              Abc_NtkDelete(pNtkMiter);
             }
 
             // Cleanup
@@ -1391,8 +1392,8 @@ int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pP
   //printf("Group %d: ",pCurrentProbe->adjTag);
   for (int resolutionLevel = 1; resolutionLevel < probeResolution && Abc_ObjFanoutNum(pCurrentProbe); resolutionLevel++)
   {
-    Abc_Obj_t *pNextProbe;
-    if (probeResolution > 1 && probeResolution == adjGrouping) // Making sure this is a grouped scan
+    Abc_Obj_t *pNextProbe = NULL; //We may be crashing somewhere here!
+    if (probeResolution > 1 && probeResolution == adjGrouping && highestTag != 0) // Making sure this is a grouped scan
     {
       int k;
       Abc_NtkForEachNode(pNtk, pNode, k) // Traverse nodes in the network to find other grouped nodes

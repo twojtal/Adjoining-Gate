@@ -290,7 +290,23 @@ int CmdCommandEcho( Abc_Frame_t * pAbc, int argc, char **argv )
 ******************************************************************************/
 int CmdCommandQuit( Abc_Frame_t * pAbc, int argc, char **argv )
 {
-    int c;
+    int c, i;
+
+    // Cleaning up network to prevent seg fault
+    Abc_Ntk_t *pNtk;
+    Abc_Obj_t *pNode;
+    pNtk = Abc_FrameReadNtk(pAbc);
+    if (pNtk != NULL)
+    {
+      Abc_NtkForEachNode( pNtk, pNode, i )
+      {
+          pNode->fMarkA = 0;
+          pNode->fMarkB = 0; // Set leakage for each node to 0
+          pNode->fMarkC = 0; // Set visited for each node to 0
+          pNode->adjTag = 0;
+          pNode->KIF = 0;
+      }
+    }
 
     Extra_UtilGetoptReset();
     while ( ( c = Extra_UtilGetopt( argc, argv, "hs" ) ) != EOF )
