@@ -365,7 +365,8 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
   printf("Network List:\n");
   if(adjGrouping)
   {
-    int highestTag = 0;
+		// Update the highest tag
+    highestTag = 0;
     Abc_NtkForEachNode( pNtk, pNode, i )
     {
       if(pNode->adjTag > highestTag)
@@ -373,6 +374,8 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
         highestTag = pNode->adjTag;
       }
     }
+		int i = 0;
+		
     for(int j = 0; j<=highestTag; j++)
     {
       Abc_NtkForEachNode( pNtk, pNode, i )
@@ -489,8 +492,6 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
       }
     }
   }
-
-  highestTag = tag;
   adjGrouping = group_size;
   printf("Adjacency tags successfully updated. Run \"list\" command to list network.\n");
   return 1;
@@ -1392,7 +1393,7 @@ int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pP
   //printf("Group %d: ",pCurrentProbe->adjTag);
   for (int resolutionLevel = 1; resolutionLevel < probeResolution && Abc_ObjFanoutNum(pCurrentProbe); resolutionLevel++)
   {
-    Abc_Obj_t *pNextProbe = NULL; //We may be crashing somewhere here!
+    Abc_Obj_t *pNextProbe = Abc_ObjFanout0(pCurrentProbe); //We may be crashing somewhere here!
     if (probeResolution > 1 && probeResolution == adjGrouping && highestTag != 0) // Making sure this is a grouped scan
     {
       int k;
@@ -1419,11 +1420,6 @@ int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pP
           }
         }
       }
-    }
-    else // If not a grouped scan, proceed as usual
-    {
-      //printf("WARNING: Scanning in regular resolution grouping mode!");
-      pNextProbe = Abc_ObjFanout0(pCurrentProbe);
     }
 
     if (!Abc_ObjIsPo(pNextProbe))
