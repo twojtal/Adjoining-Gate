@@ -34,11 +34,11 @@ struct SatMiterList {
 
 int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder);
 int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder);
-int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysConsideredCutoff);
-int AdjoiningGate_BFS( Abc_Frame_t *pAbc, int group_size);
-int AdjoiningGate_AddNode( Abc_Frame_t *pAbc, char *targetNode );
-int AdjoiningGate_RemoveNode( Abc_Frame_t *pAbc, char *delNode );
-int AdjoiningGate_ReplaceNode( Abc_Frame_t *pAbc, char *repNode );
+int AdjoiningGate_ListNetwork(Abc_Frame_t *pAbc, int adjGrouping, int keysConsideredCutoff);
+int AdjoiningGate_BFS(Abc_Frame_t *pAbc, int group_size);
+int AdjoiningGate_AddNode(Abc_Frame_t *pAbc, char *targetNode, int gateType);
+int AdjoiningGate_RemoveNode(Abc_Frame_t *pAbc, char *delNode);
+int AdjoiningGate_ReplaceNode(Abc_Frame_t *pAbc, char *repNode);
 void ClapAttack_TraversalRecursive(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys, int *pOracleKey, int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf, int *pTotalProbes, int probeResolutionSize);
 void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys, int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf, struct SatMiterList **ppSatMiterList, int *pNumProbes, int MaxProbes, int probeResolutionSize);
 void ClapAttack_CombineMitersHeuristic(struct SatMiterList **ppSatMiterListOld, struct SatMiterList **ppSatMiterListNew, int *pMaxNodesConsidered, int MaxKeysConsidered, int MaxPiNum, int fConsiderAll);
@@ -383,6 +383,28 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
         if(pNode->adjTag == j)
         {
           printf("Node %s:\t", Abc_ObjName(pNode));
+          /*printf("Type = ");
+          if(Abc_NodeIsBuf(pNode))
+          {
+            printf("buf,\t");
+          }
+          else if(Abc_NodeIsInv(pNode))
+          {
+            printf("inv,\t");
+          }
+          else if(Abc_NodeIsExorType(pNode))
+          {
+            printf("xor,\t");
+          }
+          else if(Abc_NodeIsMuxType(pNode))
+          {
+            printf("mux,\t");
+          }
+          else
+          {
+            printf("unk,\t");
+          }*/
+
           if(pNode->fMarkC) //If the node was visited
           {
             printf("Visited = true,\t\t");
@@ -421,6 +443,29 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
     Abc_NtkForEachNode( pNtk, pNode, i )
     {
       printf("Node %s:\t", Abc_ObjName(pNode));
+
+      /*printf("Type = ");
+      if(Abc_NodeIsBuf(pNode))
+      {
+        printf("buf,\t");
+      }
+      else if(Abc_NodeIsInv(pNode))
+      {
+        printf("inv,\t");
+      }
+      else if(Abc_NodeIsExorType(pNode))
+      {
+        printf("xor,\t");
+      }
+      else if(Abc_NodeIsMuxType(pNode))
+      {
+        printf("mux,\t");
+      }
+      else
+      {
+        printf("unk,\t");
+      }*/
+
       if(pNode->fMarkC) //If the node was visited
       {
         printf("Visited = true,\t\t");
@@ -498,7 +543,7 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
 }
 
 // Adds a blank node to the network
-int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode ) //Add gate type?
+int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
 {
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *newNode, *pNode, *pFanin;
@@ -521,7 +566,20 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode ) //Add gate ty
       {
         Vec_PtrSetEntry(vFanins, j, pFanin);
       }
-      newNode = Abc_NtkCreateNodeOr( pNtk, vFanins);
+
+      if(gateType == 0)
+      {
+        newNode = Abc_NtkCreateNodeOr( pNtk, vFanins);
+      }
+      else if(gateType == 1)
+      {
+        newNode = Abc_NtkCreateNodeAnd( pNtk, vFanins);
+      }
+      else
+      {
+        newNode = Abc_NtkCreateNodeExor( pNtk, vFanins);
+      }
+
       newNode->Level = Abc_ObjLevel(pNode); //Transfer the level of the node
       Abc_ObjAddFanin(Abc_NtkCreatePo( pNtk ), newNode); //Creating primary output for added node
       if(highestTag!=0 && adjGrouping>1)

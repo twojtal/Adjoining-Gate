@@ -224,6 +224,7 @@ static int AdjoiningGate_BFS_CMD( Abc_Frame_t * pAbc, int argc, int **argv )
     switch (c) {
     case 'g':
       gSize = atoi(argv[globalUtilOptind]);
+      globalUtilOptind++;
       break;
     case 'v':
       fVerbose ^= 1;
@@ -274,15 +275,17 @@ static int AdjoiningGate_BFS_CMD( Abc_Frame_t * pAbc, int argc, int **argv )
 int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
 {
   int fVerbose;
-  int c, result;
+  int c, result, gateType;
   char * addNode = NULL;
+  char * gate = NULL;
 
   // set defaults
   fVerbose = 0;
+  gateType = 0;
 
   // get arguments
   Extra_UtilGetoptReset();
-  while ((c = Extra_UtilGetopt(argc, argv, "vhn")) != EOF) {
+  while ((c = Extra_UtilGetopt(argc, argv, "vhng")) != EOF) {
     switch (c) {
     case 'n':
       if ( globalUtilOptind >= argc )
@@ -291,6 +294,16 @@ int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
         goto usage;
       }
       addNode = argv[globalUtilOptind];
+      globalUtilOptind++;
+      break;
+    case 'g':
+      if ( globalUtilOptind >= argc )
+      {
+        Abc_Print( -1, "Command line switch \"-g\" must be followed by a gate string.\n" );
+        goto usage;
+      }
+      gate = argv[globalUtilOptind];
+      globalUtilOptind++;
       break;
     case 'v':
       fVerbose ^= 1;
@@ -314,9 +327,37 @@ int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
     fprintf( pAbc->Out, "No node specified for deletion.\n" );
     return 0;
   }
+
+  if (gate == NULL)
+  {
+    fprintf( pAbc->Out, "No gate type specified. Proceeding with default (OR).\n" );
+  }
+  else
+  {
+    if(strcmp(gate,"or") == 0)
+    {
+      fprintf( pAbc->Out, "Adding gate type: OR.\n" );
+      gateType = 0;
+    }
+    else if(strcmp(gate,"and") == 0)
+    {
+      fprintf( pAbc->Out, "Adding gate type: AND.\n" );
+      gateType = 1;
+    }
+    else if(strcmp(gate,"xor") == 0)
+    {
+      fprintf( pAbc->Out, "Adding gate type: XOR.\n" );
+      gateType = 2;
+    }
+    else
+    {
+      fprintf( pAbc->Out, "Not a valid gate type.\n" );
+      goto usage;
+    }
+  }
   
   // call the main function
-  result = AdjoiningGate_AddNode( pAbc, addNode );
+  result = AdjoiningGate_AddNode( pAbc, addNode , gateType);
 
   // print verbose information if the verbose mode is on
   if (fVerbose) {
@@ -336,6 +377,7 @@ int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
   Abc_Print(-2, "\t-n <node>  : the node to be targeted \n");
   Abc_Print(-2, "\t-v         : toggle printing verbose information [default = %s]\n", fVerbose ? "yes" : "no");
   Abc_Print(-2, "\t-h         : print the command usage \n");
+  Abc_Print(-2, "\t-g         : specify the gate type (or, and, xor) \n");
   return 1;
 }
 
@@ -359,6 +401,7 @@ int AdjoiningGate_RemoveNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
         goto usage;
       }
       delNode = argv[globalUtilOptind];
+      globalUtilOptind++;
       break;
     case 'v':
       fVerbose ^= 1;
@@ -427,6 +470,7 @@ int AdjoiningGate_ReplaceNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
         goto usage;
       }
       repNode = argv[globalUtilOptind];
+      globalUtilOptind++;
       break;
     case 'v':
       fVerbose ^= 1;

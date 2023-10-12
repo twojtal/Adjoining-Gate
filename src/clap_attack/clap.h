@@ -13,11 +13,11 @@ ABC_NAMESPACE_HEADER_START
 
 // Function Declarations
 extern int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder);
-int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysConsideredCutoff);
-int AdjoiningGate_BFS( Abc_Frame_t *pAbc, int group_size);
-int AdjoiningGate_AddNode( Abc_Frame_t *pAbc, char *targetNode );
-int AdjoiningGate_RemoveNode( Abc_Frame_t *pAbc, char *delNode );
-int AdjoiningGate_ReplaceNode( Abc_Frame_t *pAbc, char *repNode );
+int AdjoiningGate_ListNetwork(Abc_Frame_t *pAbc, int adjGrouping, int keysConsideredCutoff);
+int AdjoiningGate_BFS(Abc_Frame_t *pAbc, int group_size);
+int AdjoiningGate_AddNode(Abc_Frame_t *pAbc, char *targetNode, int gateType);
+int AdjoiningGate_RemoveNode(Abc_Frame_t *pAbc, char *delNode);
+int AdjoiningGate_ReplaceNode(Abc_Frame_t *pAbc, char *repNode);
 
 #endif
 
