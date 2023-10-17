@@ -283,7 +283,7 @@ int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
 
   // set defaults
   fVerbose = 0;
-  gateType = 0;
+  gateType = 1; // Default = 1 (OR)
 
   // get arguments
   Extra_UtilGetoptReset();
@@ -339,17 +339,17 @@ int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
     if(strcmp(gate,"or") == 0)
     {
       fprintf( pAbc->Out, "Adding gate type: OR.\n" );
-      gateType = 0;
+      gateType = 1;
     }
     else if(strcmp(gate,"and") == 0)
     {
       fprintf( pAbc->Out, "Adding gate type: AND.\n" );
-      gateType = 1;
+      gateType = 2;
     }
     else if(strcmp(gate,"xor") == 0)
     {
       fprintf( pAbc->Out, "Adding gate type: XOR.\n" );
-      gateType = 2;
+      gateType = 3;
     }
     else
     {
@@ -525,7 +525,7 @@ int AdjoiningGate_Run_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
 {
   int fVerbose;
   int c, result;
-  int gateType = 0;
+  int gateType = 1;
   char *gate = NULL;
 
   // set defaults
@@ -572,17 +572,17 @@ int AdjoiningGate_Run_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
     if(strcmp(gate,"or") == 0)
     {
       fprintf( pAbc->Out, "Adding gate type: OR.\n" );
-      gateType = 0;
+      gateType = 1;
     }
     else if(strcmp(gate,"and") == 0)
     {
       fprintf( pAbc->Out, "Adding gate type: AND.\n" );
-      gateType = 1;
+      gateType = 2;
     }
     else if(strcmp(gate,"xor") == 0)
     {
       fprintf( pAbc->Out, "Adding gate type: XOR.\n" );
-      gateType = 2;
+      gateType = 3;
     }
     else
     {

@@ -152,6 +152,7 @@ struct Abc_Obj_t_     // 48/72 bytes (32-bits/64-bits)
     int               leaks;
     int               adjTag;        // BFS adjacency tag
     int               KIF;           // Key Input Fanin
+    int               gate;          // Gate type (if specified), 0 = OR, 1 = AND, 2 = XOR
 };
 
 struct Abc_Ntk_t_ 

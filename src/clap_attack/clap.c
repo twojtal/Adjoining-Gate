@@ -12,6 +12,7 @@
 #include "base/abc/abc.h"
 #include "base/main/main.h"
 #include "proof/fraig/fraig.h"
+#include "map/mio/mio.h" //Added for gate type determination
 
 struct BSI_KeyData_t {
     int NumKeys;
@@ -40,6 +41,7 @@ int AdjoiningGate_AddNode(Abc_Frame_t *pAbc, char *targetNode, int gateType);
 int AdjoiningGate_RemoveNode(Abc_Frame_t *pAbc, char *delNode);
 int AdjoiningGate_ReplaceNode(Abc_Frame_t *pAbc, char *repNode);
 int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType);
+int AdjoiningGate_UpdateGateTypes(Abc_Frame_t *pAbc);
 void ClapAttack_TraversalRecursive(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys, int *pOracleKey, int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf, int *pTotalProbes, int probeResolutionSize);
 void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys, int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf, struct SatMiterList **ppSatMiterList, int *pNumProbes, int MaxProbes, int probeResolutionSize, int grouped);
 void ClapAttack_CombineMitersHeuristic(struct SatMiterList **ppSatMiterListOld, struct SatMiterList **ppSatMiterListNew, int *pMaxNodesConsidered, int MaxKeysConsidered, int MaxPiNum, int fConsiderAll);
@@ -103,6 +105,8 @@ int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int 
       Abc_Print(-1, "ClapAttack_ClapAttackAbc: Getting the target network has failed.\n");
       return 0;
     }
+
+    AdjoiningGate_UpdateGateTypes(pAbc);
 
     // Call the main function
     if(grouped)
@@ -375,6 +379,23 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping )
         if(pNode->adjTag == j)
         {
           printf("Node %s:\t", Abc_ObjName(pNode));
+          printf("Gate = ");
+          if(pNode->gate == 1)
+          {
+            printf("OR ,\t");
+          }
+          else if(pNode->gate == 2)
+          {
+            printf("AND,\t");
+          }
+          else if(pNode->gate == 3)
+          {
+            printf("XOR,\t");
+          }
+          else
+          {
+            printf("UNK,\t"); //If gate is unknown
+          }
           if(pNode->visited) //If the node was visited
           {
             printf("Visited = true,\t\t");
@@ -413,6 +434,23 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping )
     Abc_NtkForEachNode( pNtk, pNode, i )
     {
       printf("Node %s:\t", Abc_ObjName(pNode));
+      printf("Gate = ");
+      if(pNode->gate == 1)
+      {
+        printf("OR ,\t");
+      }
+      else if(pNode->gate == 2)
+      {
+        printf("AND,\t");
+      }
+      else if(pNode->gate == 3)
+      {
+        printf("XOR,\t");
+      }
+      else
+      {
+        printf("UNK,\t"); //If gate is unknown
+      }
       if(pNode->visited) //If the node was visited
       {
         printf("Visited = true,\t\t");
@@ -514,11 +552,11 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         Vec_PtrSetEntry(vFanins, j, pFanin);
       }
 
-      if(gateType == 0)
+      if(gateType == 1)
       {
         newNode = Abc_NtkCreateNodeOr( pNtk, vFanins);
       }
-      else if(gateType == 1)
+      else if(gateType == 2)
       {
         newNode = Abc_NtkCreateNodeAnd( pNtk, vFanins);
       }
@@ -526,7 +564,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       {
         newNode = Abc_NtkCreateNodeExor( pNtk, vFanins);
       }
-
+      newNode->gate = gateType; //Set the gate type
       newNode->Level = Abc_ObjLevel(pNode); //Transfer the level of the node
       Abc_ObjAddFanin(Abc_NtkCreatePo( pNtk ), newNode); //Creating primary output for added node
       if(highestTag!=0 && adjGrouping>1) //If the network is grouped
@@ -624,8 +662,50 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
   {
     if(pNode->leaks)
     {
-      AdjoiningGate_AddNode(pAbc, Abc_ObjName(pNode),0);
+      AdjoiningGate_AddNode(pAbc, Abc_ObjName(pNode),gateType);
     }
+  }
+  return 1;
+}
+
+int AdjoiningGate_UpdateGateTypes(Abc_Frame_t * pAbc) //TODO: Implement method for determining gate type
+{
+  Abc_Ntk_t *pNtk;
+  Abc_Obj_t *pNode;
+  int i;
+  pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
+  if(pNtk == NULL)
+  {
+    Abc_Print(-1, "Getting the target network has failed.\n");
+    return 0;
+  }
+  int CountConst, CountBuf, CountInv, CountAnd, CountOr, CountOther, CounterTotal;
+  char * pSop;
+  Abc_NtkForEachNodeNotBarBuf( pNtk, pNode, i )
+  {
+      if ( i == 0 ) continue;
+      if ( Abc_NtkHasMapping(pNtk) )
+          pSop = Mio_GateReadSop((Mio_Gate_t *)pNode->pData);
+      else
+          pSop = (char *)pNode->pData;
+      // collect the stats
+      if ( Abc_SopIsConst0(pSop) || Abc_SopIsConst1(pSop) )
+          CountConst++;
+      else if ( Abc_SopIsBuf(pSop) )
+          CountBuf++;
+      else if ( Abc_SopIsInv(pSop) )
+          CountInv++;
+      else if ( (!Abc_SopIsComplement(pSop) && Abc_SopIsAndType(pSop)) ||
+                ( Abc_SopIsComplement(pSop) && Abc_SopIsOrType(pSop)) )
+          pNode->gate = 2; //AND
+      else if ( ( Abc_SopIsComplement(pSop) && Abc_SopIsAndType(pSop)) ||
+                (!Abc_SopIsComplement(pSop) && Abc_SopIsOrType(pSop)) )
+          pNode->gate = 1; //OR
+      else if (Abc_SopIsExorType(pSop))
+          pNode->gate = 3; //XOR
+      else
+          pNode->gate = 0; //UNK still
+      CounterTotal++;
   }
   return 1;
 }
