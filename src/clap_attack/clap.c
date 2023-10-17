@@ -39,6 +39,7 @@ int AdjoiningGate_BFS(Abc_Frame_t *pAbc, int group_size);
 int AdjoiningGate_AddNode(Abc_Frame_t *pAbc, char *targetNode, int gateType);
 int AdjoiningGate_RemoveNode(Abc_Frame_t *pAbc, char *delNode);
 int AdjoiningGate_ReplaceNode(Abc_Frame_t *pAbc, char *repNode);
+int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType);
 void ClapAttack_TraversalRecursive(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys, int *pOracleKey, int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf, int *pTotalProbes, int probeResolutionSize);
 void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys, int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf, struct SatMiterList **ppSatMiterList, int *pNumProbes, int MaxProbes, int probeResolutionSize, int grouped);
 void ClapAttack_CombineMitersHeuristic(struct SatMiterList **ppSatMiterListOld, struct SatMiterList **ppSatMiterListNew, int *pMaxNodesConsidered, int MaxKeysConsidered, int MaxPiNum, int fConsiderAll);
@@ -604,6 +605,29 @@ int AdjoiningGate_ReplaceNode( Abc_Frame_t * pAbc, char * repNode )
   }
   printf("\nFailed: node %s not found in the network.\n", repNode);
   return 0;
+}
+
+int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
+{
+  Abc_Ntk_t *pNtk;
+  Abc_Obj_t *pNode;
+  int i;
+
+  printf("\nAdjoining Gate Run Function:\n");
+  pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
+  if(pNtk == NULL)
+  {
+    Abc_Print(-1, "Getting the target network has failed.\n");
+    return 0;
+  }
+  Abc_NtkForEachNode( pNtk, pNode, i )
+  {
+    if(pNode->leaks)
+    {
+      AdjoiningGate_AddNode(pAbc, Abc_ObjName(pNode),0);
+    }
+  }
+  return 1;
 }
 
 // In order to run a multinode probe, we must merge the miters for EVERY node we plan to extract leakage from in order

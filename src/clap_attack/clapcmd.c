@@ -10,6 +10,7 @@ static int AdjoiningGate_BFS_CMD( Abc_Frame_t *pAbc, int argc, int **argv );
 static int AdjoiningGate_AddNode_CMD( Abc_Frame_t *pAbc, int argc, int **argv );
 static int AdjoiningGate_RemoveNode_CMD( Abc_Frame_t *pAbc, int argc, int **argv );
 static int AdjoiningGate_ReplaceNode_CMD( Abc_Frame_t *pAbc, int argc, int **argv );
+static int AdjoiningGate_Run_CMD( Abc_Frame_t *pAbc, int argc, int **argv );
 
 // Function Definitions
 void ClapAttack_Init(Abc_Frame_t * pAbc) {
@@ -19,6 +20,7 @@ void ClapAttack_Init(Abc_Frame_t * pAbc) {
   Cmd_CommandAdd(pAbc, "Various", "add", AdjoiningGate_AddNode_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "rep", AdjoiningGate_ReplaceNode_CMD, 0);
   //Cmd_CommandAdd(pAbc, "Various", "rem", AdjoiningGate_RemoveNode_CMD, 0);
+  Cmd_CommandAdd(pAbc, "Various", "run", AdjoiningGate_Run_CMD, 0);
 }
 
 int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
@@ -516,5 +518,100 @@ int AdjoiningGate_ReplaceNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
   Abc_Print(-2, "\t-n <node>  : input the node to be replaced \n");
   Abc_Print(-2, "\t-v         : toggle printing verbose information [default = %s]\n", fVerbose ? "yes" : "no");
   Abc_Print(-2, "\t-h         : print the command usage \n");
+  return 1;
+}
+
+int AdjoiningGate_Run_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
+{
+  int fVerbose;
+  int c, result;
+  int gateType = 0;
+  char *gate = NULL;
+
+  // set defaults
+  fVerbose = 0;
+
+  // get arguments
+  Extra_UtilGetoptReset();
+  while ((c = Extra_UtilGetopt(argc, argv, "fh")) != EOF)
+  {
+    switch (c)
+    {
+    case 'f':
+      if ( globalUtilOptind >= argc )
+      {
+        Abc_Print( -1, "Command line switch \"-f\" must be followed by a gate type.\n" );
+        goto usage;
+      }
+      gate = argv[globalUtilOptind];
+      globalUtilOptind++;
+      break;
+    case 'v':
+      fVerbose ^= 1;
+      break;
+    case 'h':
+      goto usage;
+    default:
+      goto usage;
+    }
+  }
+
+  // Check if there is currently a network. If not, exit.
+  if (pAbc->pNtkCur == NULL)
+  {
+    fprintf(pAbc->Out, "Empty network.\n");
+    return 0;
+  }
+
+  if (gate == NULL)
+  {
+    fprintf( pAbc->Out, "No gate type specified. Proceeding with default (OR).\n" );
+  }
+  else
+  {
+    if(strcmp(gate,"or") == 0)
+    {
+      fprintf( pAbc->Out, "Adding gate type: OR.\n" );
+      gateType = 0;
+    }
+    else if(strcmp(gate,"and") == 0)
+    {
+      fprintf( pAbc->Out, "Adding gate type: AND.\n" );
+      gateType = 1;
+    }
+    else if(strcmp(gate,"xor") == 0)
+    {
+      fprintf( pAbc->Out, "Adding gate type: XOR.\n" );
+      gateType = 2;
+    }
+    else
+    {
+      fprintf( pAbc->Out, "Not a valid gate type.\n" );
+      goto usage;
+    }
+  }
+
+  // call the main function
+  result = AdjoiningGate_Run(pAbc, gateType);
+  // print verbose information if the verbose mode is on
+  if (fVerbose)
+  {
+    Abc_Print(1, "\nVerbose mode is on.\n");
+    if (result)
+      Abc_Print(1, "The command finished successfully.\n");
+    else
+      Abc_Print(1, "The command execution has failed.\n");
+  }
+
+  // exit(0);
+
+  return 0;
+
+  usage:
+    Abc_Print(-2, "usage: scan [-fvh]\n");
+    Abc_Print(-2, "\t           The primary adjoining gate replancement program.\n");
+    Abc_Print(-2, "\t-f <int>   : force a replacement of all leaky nodes with a specified gate\n");
+    Abc_Print(-2, "\t-v         : toggle printing verbose information [default = %s]\n", fVerbose ? "yes" : "no");
+    Abc_Print(-2, "\t-h         : print the command usage \n");
   return 1;
 }
