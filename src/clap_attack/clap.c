@@ -34,21 +34,21 @@ struct SatMiterList {
 
 int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder);
 int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder);
-int AdjoiningGate_ListNetwork(Abc_Frame_t *pAbc, int adjGrouping, int keysConsideredCutoff);
+int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping );
 int AdjoiningGate_BFS(Abc_Frame_t *pAbc, int group_size);
 int AdjoiningGate_AddNode(Abc_Frame_t *pAbc, char *targetNode, int gateType);
 int AdjoiningGate_RemoveNode(Abc_Frame_t *pAbc, char *delNode);
 int AdjoiningGate_ReplaceNode(Abc_Frame_t *pAbc, char *repNode);
 void ClapAttack_TraversalRecursive(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys, int *pOracleKey, int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf, int *pTotalProbes, int probeResolutionSize);
-void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys, int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf, struct SatMiterList **ppSatMiterList, int *pNumProbes, int MaxProbes, int probeResolutionSize);
+void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys, int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf, struct SatMiterList **ppSatMiterList, int *pNumProbes, int MaxProbes, int probeResolutionSize, int grouped);
 void ClapAttack_CombineMitersHeuristic(struct SatMiterList **ppSatMiterListOld, struct SatMiterList **ppSatMiterListNew, int *pMaxNodesConsidered, int MaxKeysConsidered, int MaxPiNum, int fConsiderAll);
 void ClapAttack_InterpretDiHeuristic(Abc_Ntk_t *pNtk, Abc_Ntk_t *pNtkMiter, int *pModel, int NumKeys, int *KeyWithFreq, int *KeyNoFreq, int **ppDiFull);
-void ClapAttack_EvalMultinodeProbe(struct SatMiterList *pSatMiter, Abc_Ntk_t *pNtk, struct BSI_KeyData_t *pGlobalBsiKeys, int *pOracleKey, Abc_Ntk_t **ppCurKeyCnf, int MaxKeysConsidered, int probeResolutionSize);
+void ClapAttack_EvalMultinodeProbe(struct SatMiterList *pSatMiter, Abc_Ntk_t *pNtk, struct BSI_KeyData_t *pGlobalBsiKeys, int *pOracleKey, Abc_Ntk_t **ppCurKeyCnf, int MaxKeysConsidered, int probeResolutionSize, int grouped);
 void ClapAttack_UpdateSatMiterList(struct SatMiterList **ppSatMiterList, Abc_Obj_t **ppNode, Abc_Ntk_t *pMiter, int NumKeys, char **KeyNames, int MaxNodesConsidered, float IdentifiableKeys, int *pModel);
 void ClapAttack_FreeSatMiterList(struct SatMiterList **ppSatMiterList);
 void ClapAttack_GenSatAttackConfig(Abc_Ntk_t *pNtk, struct BSI_KeyData_t *pGlobalBsiKeys, char *pOutFile);
 int ClapAttack_UpdateGlobalKeyCnf(Abc_Ntk_t **ppCurKeyCnf, struct BSI_KeyData_t *pGlobalBsiKeys);
-int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pProbe, int probeResolutionSize);
+int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pProbe, int probeResolutionSize, int grouped);
 void ClapAttack_CleanCone(Abc_Ntk_t **ppNtk);
 void ClapAttack_RenamePo(Abc_Ntk_t *pNtk, int PoIdx, char *NewPoName);
 void ClapAttack_InitKeyCnf(Abc_Ntk_t **ppNtk, int NumKeys, int *WrongKeyValue, char **KeyNames);
@@ -175,12 +175,12 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
 
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
-    pNode->fMarkB = 0; // Set leakage for each node to 0
-    pNode->fMarkC = 0; // Set visited for each node to 0
+    pNode->visited = 0;
+    pNode->leaks = 0;
     pNode->KIF = 0;
   }
 
-  if(grouped && adjGrouping <= 1)
+  if(grouped && adjGrouping == 1)
   {
     printf("Leakage Scan: \"-g\" option selected but network is not BFS grouped.\n");
     return 0;
@@ -232,7 +232,7 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
               // restart new traversal
               ClapAttack_TraversalRecursiveHeuristic(pNtk, pPi, &GlobalBsiKeys, MaxKeysConsidered,
                                                     &GlobalBsiKeys.pKeyCnf, &pSatMiterList,
-                                                    &NumProbes, MaxProbes, probeResolutionSize);
+                                                    &NumProbes, MaxProbes, probeResolutionSize, grouped);
             }
           }
         }
@@ -290,12 +290,6 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
       }
     }
 
-    /*Abc_NtkForEachNode( pNtk, pNode, i ) // Used for testing
-    {
-      printf("Adjacency Tag: %d\n", pNode->adjTag);
-    }
-    return 0;*/
-
     // If there were satisfying inputs identified, simulate the EOFM probe of these nodes with our inputs.
     if (pSatMiterList)
     {
@@ -306,13 +300,12 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
         // Simulate and infer from the EOFM probe.
         TotalProbes++;
         ClapAttack_EvalMultinodeProbe(pSatMiterList, pNtk, &GlobalBsiKeys, pOracleKey,
-                                      &GlobalBsiKeys.pKeyCnf, MaxKeysConsidered, probeResolutionSize);
+                                      &GlobalBsiKeys.pKeyCnf, MaxKeysConsidered, probeResolutionSize, grouped);
         ClapAttack_FreeSatMiterList(&pSatMiterList);
         MaxNodesConsidered = 2;
         pSatMiterList = NULL;
 
-        // Set visited for each node to 0
-        Abc_NtkForEachNode(pNtk, pNode, j) pNode->fMarkC = 0;
+        Abc_NtkForEachNode(pNtk, pNode, j) pNode->visited = 0; // Set visited for each node to 0
       }
       else
       {
@@ -321,8 +314,7 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
     }
     else
     {
-      // There is no more physical data to be had...
-      break;
+      break; // There is no more physical data to be had...
     }
   }
 
@@ -345,14 +337,14 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
   free( GlobalBsiKeys.KeyValue );
   
   // List the network
-  return AdjoiningGate_ListNetwork(pAbc, listAdjOrder, keysConsideredCutoff);
+  return AdjoiningGate_ListNetwork(pAbc, listAdjOrder);
 }
 
-int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysConsideredCutoff)
+int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping )
 {
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
-  int i, NodesVisited = 0, NodesLeaking = 0, TotalNumNodes = 0;
+  int i = 0, NodesVisited = 0, NodesLeaking = 0, TotalNumNodes = 0;
 
   // Get the network that is read into ABC
   pNtk = Abc_FrameReadNtk(pAbc);
@@ -363,9 +355,9 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
   }
 
   printf("Network List:\n");
-  if(adjGrouping)
+  if(aGrouping)
   {
-		// Update the highest tag
+		// Update the highest tag (needs to be here)
     highestTag = 0;
     Abc_NtkForEachNode( pNtk, pNode, i )
     {
@@ -374,7 +366,6 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
         highestTag = pNode->adjTag;
       }
     }
-		int i = 0;
 		
     for(int j = 0; j<=highestTag; j++)
     {
@@ -383,29 +374,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
         if(pNode->adjTag == j)
         {
           printf("Node %s:\t", Abc_ObjName(pNode));
-          /*printf("Type = ");
-          if(Abc_NodeIsBuf(pNode))
-          {
-            printf("buf,\t");
-          }
-          else if(Abc_NodeIsInv(pNode))
-          {
-            printf("inv,\t");
-          }
-          else if(Abc_NodeIsExorType(pNode))
-          {
-            printf("xor,\t");
-          }
-          else if(Abc_NodeIsMuxType(pNode))
-          {
-            printf("mux,\t");
-          }
-          else
-          {
-            printf("unk,\t");
-          }*/
-
-          if(pNode->fMarkC) //If the node was visited
+          if(pNode->visited) //If the node was visited
           {
             printf("Visited = true,\t\t");
             NodesVisited++;
@@ -414,7 +383,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
           {
             printf("Visited = false,\t");
           }
-          if(pNode->fMarkB) //If the node leaks key information
+          if(pNode->leaks) //If the node leaks key information
           {
             printf("Leaks = true,\t");
             NodesLeaking++;
@@ -430,7 +399,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
           printf("Adj. Tag = %d\n", pNode->adjTag);
           TotalNumNodes++;
 
-          /*if(pNode->fMarkC == 1 && pNode->fMarkB == 0 && pNode->KIF <= keysConsideredCutoff) //If visited but doesn't leak
+          /*if(pNode->visited == 1 && pNode->leaks == 0 && pNode->KIF <= keysConsideredCutoff) //If visited but doesn't leak
           {
             printf("Node visited but doesn't leak!\n");
           }*/
@@ -443,30 +412,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
     Abc_NtkForEachNode( pNtk, pNode, i )
     {
       printf("Node %s:\t", Abc_ObjName(pNode));
-
-      /*printf("Type = ");
-      if(Abc_NodeIsBuf(pNode))
-      {
-        printf("buf,\t");
-      }
-      else if(Abc_NodeIsInv(pNode))
-      {
-        printf("inv,\t");
-      }
-      else if(Abc_NodeIsExorType(pNode))
-      {
-        printf("xor,\t");
-      }
-      else if(Abc_NodeIsMuxType(pNode))
-      {
-        printf("mux,\t");
-      }
-      else
-      {
-        printf("unk,\t");
-      }*/
-
-      if(pNode->fMarkC) //If the node was visited
+      if(pNode->visited) //If the node was visited
       {
         printf("Visited = true,\t\t");
         NodesVisited++;
@@ -475,7 +421,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
       {
         printf("Visited = false,\t");
       }
-      if(pNode->fMarkB) //If the node leaks key information
+      if(pNode->leaks) //If the node leaks key information
       {
         printf("Leaks = true,\t");
         NodesLeaking++;
@@ -492,7 +438,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int adjGrouping, int keysCons
       //Abc_ObjPrint(file, pNode); //This function can print the node to a file
       TotalNumNodes++;
 
-      /*if(pNode->fMarkC == 1 && pNode->fMarkB == 0 && pNode->KIF > 0 && pNode->KIF <= keysConsideredCutoff) //If visited but doesn't leak
+      /*if(pNode->visited == 1 && pNode->leaks == 0 && pNode->KIF > 0 && pNode->KIF <= keysConsideredCutoff) //If visited but doesn't leak
       {
         printf("Node visited but doesn't leak!\n");
       }*/
@@ -582,11 +528,11 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
 
       newNode->Level = Abc_ObjLevel(pNode); //Transfer the level of the node
       Abc_ObjAddFanin(Abc_NtkCreatePo( pNtk ), newNode); //Creating primary output for added node
-      if(highestTag!=0 && adjGrouping>1)
+      if(highestTag!=0 && adjGrouping>1) //If the network is grouped
       {
-        newNode->adjTag = pNode->adjTag; //Add new node to the adjacency group
         highestTag++; //Incrementing the highest tag
         pNode->adjTag = highestTag; //Putting the target node in its own group
+        newNode->adjTag = pNode->adjTag; //Add new node to the adjacency group, "orphaning" the non-target nodes
       }
       printf("\nNode %s added.\n", Abc_ObjName( newNode ));
       return 1;
@@ -879,7 +825,7 @@ void ClapAttack_CombineMitersHeuristic(struct SatMiterList **ppSatMiterListOld, 
 void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys,
                                             int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf,
                                             struct SatMiterList **ppSatMiterList, int *pNumProbes, int MaxProbes,
-                                            int probeResolutionSize) {
+                                            int probeResolutionSize, int grouped) {
     int i, j, k, SatStatus, MiterStatus, NumKeys, NumKnownKeys, fCurKeyCnfAlloc;
     Abc_Ntk_t *pNtkCone, *pNtkMiter;
     Abc_Obj_t *pNode, *pPi, **ppNodeFreeList;
@@ -892,7 +838,7 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
     // Goal: For each PI that is a key, follow fanout until it intersects with unknown key.
     Abc_ObjForEachFanout(pCurNode, pNode, i) {
         // Have we visited this node before?
-        if (!pNode->fMarkC) {
+        if (pNode->visited == 0) {
             // Initialzie free list to the number of keys present...
             ppNodeFreeList = (Abc_Obj_t **)malloc(sizeof(Abc_Obj_t *) * pGlobalBsiKeys->NumKeys);
 
@@ -913,7 +859,7 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
 
             // Check supports ... if only one is an unknown key,
             // process it and continue fanout
-            ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, probeResolutionSize);
+            ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, probeResolutionSize, grouped);
 
             // Loop over the miter generation phase until SAT fails
             NumKeys = 0;
@@ -964,15 +910,15 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
                 if (!SatStatus)
                 {
                   // Update SAT node list with new Sat miter
-                  pNode->fMarkB = 1; // Node leaks key information
-                  pNode->fMarkC = 1; // Node visited
+                  pNode->leaks = 1; // Node leaks key information
+                  pNode->visited = 1; // Node visited
                   (*pNumProbes)++;
                   // ClapAttack_UpdateSatMiterList( ppSatMiterList, &pNode, pNtkMiter, NumKeys, KeyNameTmp, 1, 1.0/(1<<(MaxKeysConsidered-1)), pNtkMiter->pModel );
                 }
                 else
                 {
                   // Node is UNSAT, but has the right number of keys... It's useless so mark it
-                  pNode->fMarkC = 1;
+                  pNode->visited = 1;
                 }
               }
               else
@@ -994,7 +940,7 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
         // Recurse
         if ((NumKeys <= MaxKeysConsidered) && (*pNumProbes <= MaxProbes)) {
             ClapAttack_TraversalRecursiveHeuristic(pNtk, pNode, pGlobalBsiKeys, MaxKeysConsidered, ppCurKeyCnf,
-                                                   ppSatMiterList, pNumProbes, MaxProbes, probeResolutionSize);
+                                                   ppSatMiterList, pNumProbes, MaxProbes, probeResolutionSize, grouped);
         }
     }
 }
@@ -1002,7 +948,7 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
 // Evaluate/simulate a multinode EOFM probe and infer key information leakage that will be produced.
 void ClapAttack_EvalMultinodeProbe(struct SatMiterList *pSatMiter, Abc_Ntk_t *pNtk,
                                    struct BSI_KeyData_t *pGlobalBsiKeys, int *pOracleKey, Abc_Ntk_t **ppCurKeyCnf,
-                                   int MaxKeysConsidered, int probeResolutionSize) {
+                                   int MaxKeysConsidered, int probeResolutionSize, int grouped) {
     int *pFullDi;
     int i, j, k, m, NumKeys, NumKnownKeys, *KeyWithFreq, *KeyNoFreq, *WrongKeyValue, KeyValue = 0, PartialKeySatStatus,
                                                                                      fCurKeyCnfAlloc, fRerunInfer;
@@ -1028,7 +974,7 @@ void ClapAttack_EvalMultinodeProbe(struct SatMiterList *pSatMiter, Abc_Ntk_t *pN
     // process it and continue fanout
     for (i = 0; i < pSatMiter->MatchedNodes; i++) {
         pNode = pSatMiter->ppSatNode[i];
-        ClapAttack_IsolateCone(pNtk, &pNtkCone, pSatMiter->ppSatNode[i], probeResolutionSize);
+        ClapAttack_IsolateCone(pNtk, &pNtkCone, pSatMiter->ppSatNode[i], probeResolutionSize, grouped);
 
         // Loop over the miter generation phase until SAT fails
         NumKeys = 0;
@@ -1400,13 +1346,13 @@ int ClapAttack_UpdateGlobalKeyCnf(Abc_Ntk_t **ppCurKeyCnf, struct BSI_KeyData_t 
 
 // Isolate fan-in cone for a specific probe point (inclusive of probed node) for the network.
 // Run cone command... and return the fanout cone as a separate network
-int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pProbe, int probeResolution)
+int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pProbe, int probeResolution, int grouped)
 {
   int fUseAllCis = 0;
   char PoTmpName[25];
   Abc_Ntk_t *pNtkConeTmp, *pNtkTmp;
   Abc_Obj_t *pPo, *pHeadNode, *pFanin, *pNode;
-  int j;
+  int j = 0;
 
   // Create cone for probed node
   *ppNtkCone = Abc_NtkCreateCone(pNtk, pProbe, Abc_ObjName(pProbe), fUseAllCis);
@@ -1451,10 +1397,12 @@ int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pP
   //printf("Group %d: ",pCurrentProbe->adjTag);
   for (int resolutionLevel = 1; resolutionLevel < probeResolution && Abc_ObjFanoutNum(pCurrentProbe); resolutionLevel++)
   {
-    Abc_Obj_t *pNextProbe = Abc_ObjFanout0(pCurrentProbe); //We may be crashing somewhere here!
-    if (probeResolution > 1 && probeResolution == adjGrouping && highestTag != 0) // Making sure this is a grouped scan
+    Abc_Obj_t *pNextProbe = Abc_ObjFanout0(pCurrentProbe); //Assign by default
+    if (grouped) // Making sure this is a grouped scan
     {
-      int k;
+      //printf("ENTERED GROUP SCAN MODE FOR CREATE CONE");
+      //return 0;
+      int k = 0;
       Abc_NtkForEachNode(pNtk, pNode, k) // Traverse nodes in the network to find other grouped nodes
       {
         if (pNode->adjTag == pCurrentProbe->adjTag) // If in the same group
@@ -1483,7 +1431,7 @@ int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pP
     if (!Abc_ObjIsPo(pNextProbe))
     {
       int ignoreFanin = -1;
-      int i;
+      int i = 0;
       Abc_ObjForEachFanin(pNextProbe, pFanin, i)
       {
         if (pFanin == pCurrentProbe)

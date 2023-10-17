@@ -153,7 +153,7 @@ int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
 
 static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **argv )
 {
-  int fVerbose, adjGrouping = 0;
+  int fVerbose, aGrouping = 0;
   int c, result, keysConsideredCutoff = 7;
   
   // set defaults
@@ -164,7 +164,7 @@ static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **ar
   while ((c = Extra_UtilGetopt(argc, argv, "avh")) != EOF) {
     switch (c) {
     case 'a':
-      adjGrouping = 1;
+      aGrouping = 1;
       break;
     case 'v':
       fVerbose ^= 1;
@@ -184,7 +184,7 @@ static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **ar
   }
   
   // call the main function
-  result = AdjoiningGate_ListNetwork(pAbc, adjGrouping, keysConsideredCutoff);
+  result = AdjoiningGate_ListNetwork(pAbc, aGrouping);
 
   // print verbose information if the verbose mode is on
   if (fVerbose)
@@ -324,7 +324,7 @@ int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
 
   // If no node was specified, show error
   if (addNode == NULL) {
-    fprintf( pAbc->Out, "No node specified for deletion.\n" );
+    fprintf( pAbc->Out, "No target node specified.\n" );
     return 0;
   }
 

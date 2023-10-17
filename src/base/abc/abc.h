@@ -148,6 +148,8 @@ struct Abc_Obj_t_     // 48/72 bytes (32-bits/64-bits)
       Abc_Obj_t *     pCopy;         // the copy of this object
       int             iTemp;
       float           dTemp; };
+    int               visited;
+    int               leaks;
     int               adjTag;        // BFS adjacency tag
     int               KIF;           // Key Input Fanin
 };
