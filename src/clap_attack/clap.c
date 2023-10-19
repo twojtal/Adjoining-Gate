@@ -106,8 +106,6 @@ int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int 
       return 0;
     }
 
-    AdjoiningGate_UpdateGateTypes(pAbc);
-
     // Call the main function
     if(grouped)
     {
@@ -359,6 +357,8 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping )
     return 0;
   }
 
+  AdjoiningGate_UpdateGateTypes(pAbc); // Update the gate types
+
   printf("Network List:\n");
   if(aGrouping)
   {
@@ -392,10 +392,27 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping )
           {
             printf("XOR,\t");
           }
+          else if(pNode->gate == 4)
+          {
+            printf("INV,\t");
+          }
+          else if(pNode->gate == 5)
+          {
+            printf("BUF,\t");
+          }
+          else if(pNode->gate == 6)
+          {
+            printf("CST,\t");
+          }
+          else if(pNode->gate == 7)
+          {
+            printf("MUX,\t");
+          }
           else
           {
             printf("UNK,\t"); //If gate is unknown
           }
+
           if(pNode->visited) //If the node was visited
           {
             printf("Visited = true,\t\t");
@@ -447,10 +464,27 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping )
       {
         printf("XOR,\t");
       }
+      else if(pNode->gate == 4)
+      {
+        printf("INV,\t");
+      }
+      else if(pNode->gate == 5)
+      {
+        printf("BUF,\t");
+      }
+      else if(pNode->gate == 6)
+      {
+        printf("CST,\t");
+      }
+      else if(pNode->gate == 7)
+      {
+        printf("MUX,\t");
+      }
       else
       {
         printf("UNK,\t"); //If gate is unknown
       }
+
       if(pNode->visited) //If the node was visited
       {
         printf("Visited = true,\t\t");
@@ -530,10 +564,10 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
 // Adds a blank node to the network
 int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
 {
-  Abc_Ntk_t *pNtk;
-  Abc_Obj_t *newNode, *pNode, *pFanin;
+  Abc_Ntk_t *pNtk, *pNtkCone;
+  Abc_Obj_t *newNode, *pNode, *pPi, *pPiSource;
   Vec_Ptr_t *vFanins;
-  int i, j;
+  int i=0, j=0, k=0;
 
   printf("\nAdd Node Function:\n");
   pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
@@ -546,10 +580,23 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
   {
     if(strcmp(Abc_ObjName( pNode ), targetNode) == 0)
     {
+      //printf("Found target node\n");
+      ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0);
+      //printf("Isolated Fanin Cone\n");
+      //Isolating the Primary Inputs:
       vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins
-      Abc_ObjForEachFanin( pNode, pFanin, j )
+      Abc_NtkForEachPi( pNtkCone, pPi, j )
       {
-        Vec_PtrSetEntry(vFanins, j, pFanin);
+        if (!strstr(Abc_ObjName(pPi), "key"))
+        {
+          Abc_NtkForEachPi( pNtk, pPiSource, k )
+          {
+            if (strstr(Abc_ObjName(pPiSource), Abc_ObjName(pPi)))
+            {
+              Vec_PtrSetEntry(vFanins, j, pPiSource);
+            }
+          }
+        }
       }
 
       if(gateType == 1)
@@ -564,7 +611,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       {
         newNode = Abc_NtkCreateNodeExor( pNtk, vFanins);
       }
-      newNode->gate = gateType; //Set the gate type
+      //newNode->gate = gateType; //Set the gate type
       newNode->Level = Abc_ObjLevel(pNode); //Transfer the level of the node
       Abc_ObjAddFanin(Abc_NtkCreatePo( pNtk ), newNode); //Creating primary output for added node
       if(highestTag!=0 && adjGrouping>1) //If the network is grouped
@@ -668,44 +715,46 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
   return 1;
 }
 
-int AdjoiningGate_UpdateGateTypes(Abc_Frame_t * pAbc) //TODO: Implement method for determining gate type
+int AdjoiningGate_UpdateGateTypes(Abc_Frame_t * pAbc)
 {
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
-  int i;
+  int i = 0;
+  char * pSop;
+
   pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
   if(pNtk == NULL)
   {
     Abc_Print(-1, "Getting the target network has failed.\n");
     return 0;
   }
-  int CountConst, CountBuf, CountInv, CountAnd, CountOr, CountOther, CounterTotal;
-  char * pSop;
-  Abc_NtkForEachNodeNotBarBuf( pNtk, pNode, i )
+  Abc_NtkToSop( pNtk, 1, 1000);
+  Abc_NtkForEachNode( pNtk, pNode, i )
   {
-      if ( i == 0 ) continue;
-      if ( Abc_NtkHasMapping(pNtk) )
-          pSop = Mio_GateReadSop((Mio_Gate_t *)pNode->pData);
-      else
-          pSop = (char *)pNode->pData;
-      // collect the stats
-      if ( Abc_SopIsConst0(pSop) || Abc_SopIsConst1(pSop) )
-          CountConst++;
-      else if ( Abc_SopIsBuf(pSop) )
-          CountBuf++;
-      else if ( Abc_SopIsInv(pSop) )
-          CountInv++;
-      else if ( (!Abc_SopIsComplement(pSop) && Abc_SopIsAndType(pSop)) ||
-                ( Abc_SopIsComplement(pSop) && Abc_SopIsOrType(pSop)) )
-          pNode->gate = 2; //AND
-      else if ( ( Abc_SopIsComplement(pSop) && Abc_SopIsAndType(pSop)) ||
-                (!Abc_SopIsComplement(pSop) && Abc_SopIsOrType(pSop)) )
-          pNode->gate = 1; //OR
-      else if (Abc_SopIsExorType(pSop))
-          pNode->gate = 3; //XOR
-      else
-          pNode->gate = 0; //UNK still
-      CounterTotal++;
+    if ( Abc_NtkHasMapping(pNtk) )
+    {
+      printf("TEST\n");
+      pSop = Mio_GateReadSop((Mio_Gate_t *)pNode->pData);
+    }
+    else
+    {
+      pSop = (char *)pNode->pData;
+    }
+    // collect the stats
+    if ( Abc_SopIsConst0(pSop) || Abc_SopIsConst1(pSop) )
+      pNode->gate = 6; //CST
+    else if ( Abc_SopIsBuf(pSop) )
+      pNode->gate = 5; //BUF
+    else if ( Abc_SopIsInv(pSop) )
+      pNode->gate = 4; //INV
+    else if ( Abc_SopIsExorType(pSop) )
+      pNode->gate = 3; //XOR
+    else if ( Abc_SopIsOrType(pSop) )
+      pNode->gate = 1; //OR
+    else if ( Abc_SopIsAndType(pSop) )
+      pNode->gate = 2; //AND
+    else
+      pNode->gate = 0; //UNK
   }
   return 1;
 }
