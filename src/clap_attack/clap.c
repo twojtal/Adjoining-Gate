@@ -696,7 +696,7 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
 {
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
-  int i;
+  int i = 0, nodeCtr = 0;
 
   printf("\nAdjoining Gate Run Function:\n");
   pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
@@ -709,9 +709,11 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
   {
     if(pNode->leaks)
     {
-      AdjoiningGate_AddNode(pAbc, Abc_ObjName(pNode),gateType);
+      AdjoiningGate_AddNode(pAbc, Abc_ObjName(pNode), gateType);
+      nodeCtr++;
     }
   }
+  printf("Added adjoining gates to %d nodes\n",nodeCtr);
   return 1;
 }
 
