@@ -962,10 +962,10 @@ void ClapAttack_CombineMitersHeuristic(struct SatMiterList **ppSatMiterListOld, 
 // Recurseively traverse nodes in the network to identify probe-able locations.
 void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys, int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf, struct SatMiterList **ppSatMiterList, int *pNumProbes, int MaxProbes, int probeResolutionSize, int grouped)
 {
-  int i, j, SatStatus, MiterStatus, NumKeys, NumKnownKeys, fCurKeyCnfAlloc;
+  int i, j, k, SatStatus, MiterStatus, NumKeys, NumKnownKeys, fCurKeyCnfAlloc;
   Abc_Ntk_t *pNtkCone, *pNtkMiter;
   Abc_Obj_t *pNode, *pPi, **ppNodeFreeList;
-  //char **KeyNameTmp;
+  char **KeyNameTmp;
 
   // Initialize partial key info to NULL
   fCurKeyCnfAlloc = 0;
@@ -975,27 +975,27 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
   Abc_ObjForEachFanout(pCurNode, pNode, i)
   {
     // Have we visited this node before?
-    if (pNode->visited == 0)
+    if (!pNode->visited)
     {
       // Initialzie free list to the number of keys present...
       ppNodeFreeList = (Abc_Obj_t **)malloc(sizeof(Abc_Obj_t *) * pGlobalBsiKeys->NumKeys);
 
-      /*KeyNameTmp = (char **)malloc(sizeof(char *) * MaxKeysConsidered);
+      KeyNameTmp = (char **)malloc(sizeof(char *) * MaxKeysConsidered);
       for (k = 0; k < MaxKeysConsidered; k++)
       {
         KeyNameTmp[k] = (char *)malloc(sizeof(char) * 100);
-      }*/
+      }
 
       // Check to make sure were not lookign at a PO. If so,
       // don't bother pursuing the fanout.
-      /*if (Abc_ObjIsCo(pNode))
+      if (Abc_ObjIsCo(pNode))
       {
         /// printf("This node is a primary output. Done with fanout.\n");
         for (k = 0; k < MaxKeysConsidered; k++) free(KeyNameTmp[k]);
         free(KeyNameTmp);
         free(ppNodeFreeList);
         continue;
-      }*/
+      }
 
       // Check supports ... if only one is an unknown key,
       // process it and continue fanout
@@ -1015,10 +1015,10 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
         {
           if (!ClapAttack_SetKnownKeys(pNtkCone, pPi, pGlobalBsiKeys))
           {
-            /*if (NumKeys < MaxKeysConsidered)
+            if (NumKeys < MaxKeysConsidered)
             {
               strcpy(KeyNameTmp[NumKeys], Abc_ObjName(pPi));
-            }*/
+            }
             NumKeys++;
           }
           else
@@ -1029,20 +1029,11 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
         }
       }
 
-      if(strstr(Abc_ObjName(pNode), "n568")) // Test Statement
-      {
-        printf("Node n568:\n");
-        printf("KIF: %d\n", pNode->KIF);
-        printf("NumKeys: %d\n", NumKeys);
-        printf("MaxKeysConsidered: %d\n", MaxKeysConsidered);
-        printf("We are looking for (NumKeys == MaxKeysConsidered) && NumKeys\n");
-      }
-
       // Delete known keys from cone.
       if (NumKnownKeys) ClapAttack_DelKnownKeys(ppNodeFreeList, NumKnownKeys);
 
       // Can we evaluate this node (i.e. does it have the currently considered number of keys as input)?
-      if ((NumKeys <= MaxKeysConsidered) && NumKeys)
+      if ((NumKeys == MaxKeysConsidered) && NumKeys)
       {
         // Generate the logical miter to infer whether key leakage occurs at this node.
         // printf("Evaluating node %s\n", Abc_ObjName(pNode));
@@ -1058,6 +1049,16 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
           if (!SatStatus)
           {
             // Update SAT node list with new Sat miter
+            if(grouped)//strstr(Abc_ObjName(pNode), "n568")) // Test Statement
+            {
+              printf("Grouped Node That Leaks: %s\n",Abc_ObjName(pNode));
+              printf("Adjacency Tag: %d\n", pNode->adjTag);
+              printf("KIF: %d\n", pNode->KIF);
+              printf("NumKeys: %d\n", NumKeys);
+              printf("MaxKeysConsidered: %d\n", MaxKeysConsidered);
+              printf("We are looking for (NumKeys == MaxKeysConsidered) && NumKeys\n");
+              printf("\n");
+            }
             pNode->leaks = 1; // Node leaks key information
             pNode->visited = 1; // Node visited
             (*pNumProbes)++;
@@ -1080,8 +1081,8 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
 
       // Cleanup
       Abc_NtkDelete(pNtkCone);
-      //for (k = 0; k < MaxKeysConsidered; k++) free(KeyNameTmp[k]);
-      //free(KeyNameTmp);
+      for (k = 0; k < MaxKeysConsidered; k++) free(KeyNameTmp[k]);
+      free(KeyNameTmp);
       free(ppNodeFreeList);
     }
 
