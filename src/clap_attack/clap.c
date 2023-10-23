@@ -594,6 +594,13 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       {
         newNode = Abc_NtkCreateNodeExor( pNtk, vFanins);
       }
+      //Assign the adjoining gate a name
+      char subbuff[10];
+      memcpy( subbuff, Abc_ObjName(pNode), 5 );
+      subbuff[5] = '\0';
+      strcat(subbuff,"adj");
+      Abc_ObjAssignName( newNode, subbuff, NULL );
+      
       //newNode->gate = gateType; //Set the gate type
       newNode->Level = Abc_ObjLevel(pNode); //Transfer the level of the node
       Abc_ObjAddFanin(Abc_NtkCreatePo( pNtk ), newNode); //Creating primary output for added node
