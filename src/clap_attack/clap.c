@@ -561,23 +561,39 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
   }
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
-    if(strcmp(Abc_ObjName( pNode ), targetNode) == 0)
+    if(strcmp(Abc_ObjName( pNode ), targetNode) == 0) // Finding the target node
     {
-      //printf("Found target node\n");
-      ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0);
-      //printf("Isolated Fanin Cone\n");
-      //Isolating the Primary Inputs:
+      ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0); // Isolate the targey node's fanin cone
+      //Isolating the Non-Key Dependent Primary Inputs:
       vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins
-      Abc_NtkForEachPi( pNtkCone, pPi, j )
+      int addedFanins = 0;
+      char *tempName;
+      Abc_NtkForEachPi( pNtkCone, pPi, j ) // Traverse all primary inputs to the node
       {
-        if (!strstr(Abc_ObjName(pPi), "key"))
+        if (!strstr(Abc_ObjName(pPi), "key")) // If the input is not a key
         {
-          Abc_NtkForEachPi( pNtk, pPiSource, k )
+          Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
           {
             if (strstr(Abc_ObjName(pPiSource), Abc_ObjName(pPi)))
             {
               Vec_PtrSetEntry(vFanins, j, pPiSource);
+              tempName = Abc_ObjName(pPi);
+              addedFanins++;
             }
+          }
+        }
+      }
+      // Check if the list of fanins is 1
+      if (addedFanins == 1)
+      {
+        int k = 0;
+        Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
+        {
+          if (!strstr(Abc_ObjName(pPiSource), "key") && !strstr(Abc_ObjName(pPiSource), tempName)) // If the input is not a key and not the same input as earlier
+          {
+            Vec_PtrSetEntry(vFanins, 1, pPiSource);
+            printf("Found a node with fanin 1 and added an extra input.");
+            break;
           }
         }
       }
@@ -603,7 +619,16 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       
       //newNode->gate = gateType; //Set the gate type
       newNode->Level = Abc_ObjLevel(pNode); //Transfer the level of the node
-      Abc_ObjAddFanin(Abc_NtkCreatePo( pNtk ), newNode); //Creating primary output for added node
+
+      //Creating primary output for added node
+      Abc_Obj_t *newPo = Abc_NtkCreatePo( pNtk );
+      char subbuff2[15];
+      memcpy( subbuff2, Abc_ObjName(pNode), 5 );
+      subbuff2[5] = '\0';
+      strcat(subbuff2,"adjPo");
+      Abc_ObjAssignName( newPo, subbuff2, NULL );
+      Abc_ObjAddFanin(newPo, newNode);
+
       if(highestTag!=0 && adjGrouping>1) //If the network is grouped
       {
         highestTag++; //Incrementing the highest tag
