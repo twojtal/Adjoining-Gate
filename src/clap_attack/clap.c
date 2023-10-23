@@ -561,7 +561,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
   }
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
-    if(strcmp(Abc_ObjName( pNode ), targetNode) == 0) // Finding the target node
+    if(strstr(Abc_ObjName( pNode ), targetNode)) // Finding the target node
     {
       ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0); // Isolate the targey node's fanin cone
       //Isolating the Non-Key Dependent Primary Inputs:
@@ -618,7 +618,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       Abc_ObjAssignName( newNode, subbuff, NULL );
       
       //newNode->gate = gateType; //Set the gate type
-      newNode->Level = Abc_ObjLevel(pNode); //Transfer the level of the node
+      newNode->Level = 1; // The level will now be 1
 
       //Creating primary output for added node
       Abc_Obj_t *newPo = Abc_NtkCreatePo( pNtk );
@@ -734,7 +734,7 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
 
 int AdjoiningGate_UpdateGateTypes(Abc_Frame_t * pAbc)
 {
-  /*Abc_Ntk_t *pNtk;
+  Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
   int i = 0;
   char * pSop;
@@ -745,34 +745,39 @@ int AdjoiningGate_UpdateGateTypes(Abc_Frame_t * pAbc)
     Abc_Print(-1, "Getting the target network has failed.\n");
     return 0;
   }
-  //Abc_NtkToSop( pNtk, 1, 1000);
+  //Abc_NtkToSop( pNtk, -1, ABC_INFINITY );
+  //First Pass - AND, INV
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
-    if ( Abc_NtkHasMapping(pNtk) )
-    {
-      printf("TEST\n");
-      pSop = Mio_GateReadSop((Mio_Gate_t *)pNode->pData);
-    }
-    else
+    if(pNode->gate == 0)
     {
       pSop = (char *)pNode->pData;
+
+      if ( Abc_SopIsInv(pSop) )
+        pNode->gate = 4; //INV
+      else if ( Abc_SopIsAndType(pSop) )
+        pNode->gate = 2; //AND
     }
-    // collect the stats
-    if ( Abc_SopIsConst0(pSop) || Abc_SopIsConst1(pSop) )
-      pNode->gate = 6; //CST
-    else if ( Abc_SopIsBuf(pSop) )
-      pNode->gate = 5; //BUF
-    else if ( Abc_SopIsInv(pSop) )
-      pNode->gate = 4; //INV
-    else if ( Abc_SopIsExorType(pSop) )
-      pNode->gate = 3; //XOR
-    else if ( Abc_SopIsOrType(pSop) )
-      pNode->gate = 1; //OR
-    else if ( Abc_SopIsAndType(pSop) )
-      pNode->gate = 2; //AND
-    else
-      pNode->gate = 0; //UNK
-  }*/
+  }
+
+  //Second Pass - OR, XOR
+  Abc_NtkToSop( pNtk, -1, ABC_INFINITY );
+  Abc_NtkForEachNode( pNtk, pNode, i )
+  {
+    if(pNode->gate == 0)
+    {
+      pSop = (char *)pNode->pData;
+
+      if ( Abc_SopIsConst0(pSop) || Abc_SopIsConst1(pSop) )
+        pNode->gate = 6; //CST
+      else if ( Abc_SopIsBuf(pSop) )
+        pNode->gate = 5; //BUF
+      else if ( Abc_SopIsExorType(pSop) )
+        pNode->gate = 3; //XOR
+      else if ( (!Abc_SopIsComplement(pSop) && Abc_SopIsAndType(pSop)) || ( Abc_SopIsComplement(pSop) && Abc_SopIsOrType(pSop)) )
+        pNode->gate = 1; //OR
+    }
+  }
   return 1;
 }
 
@@ -1007,7 +1012,7 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
   Abc_ObjForEachFanout(pCurNode, pNode, i)
   {
     // Have we visited this node before?
-    if (!pNode->visited)
+    if (pNode->visited == 0)
     {
       // Initialzie free list to the number of keys present...
       ppNodeFreeList = (Abc_Obj_t **)malloc(sizeof(Abc_Obj_t *) * pGlobalBsiKeys->NumKeys);
@@ -1081,7 +1086,7 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
           if (!SatStatus)
           {
             // Update SAT node list with new Sat miter
-            if(grouped)//strstr(Abc_ObjName(pNode), "n568")) // Test Statement
+            /*if(grouped)//strstr(Abc_ObjName(pNode), "n568")) // Test Statement
             {
               printf("Grouped Node That Leaks: %s\n",Abc_ObjName(pNode));
               printf("Adjacency Tag: %d\n", pNode->adjTag);
@@ -1090,9 +1095,9 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
               printf("MaxKeysConsidered: %d\n", MaxKeysConsidered);
               printf("We are looking for (NumKeys == MaxKeysConsidered) && NumKeys\n");
               printf("\n");
-            }
-            pNode->leaks = 1; // Node leaks key information
+            }*/
             pNode->visited = 1; // Node visited
+            pNode->leaks = 1; // Node leaks key information
             (*pNumProbes)++;
             // ClapAttack_UpdateSatMiterList( ppSatMiterList, &pNode, pNtkMiter, NumKeys, KeyNameTmp, 1, 1.0/(1<<(MaxKeysConsidered-1)), pNtkMiter->pModel );
           }
