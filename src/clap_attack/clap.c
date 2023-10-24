@@ -159,17 +159,13 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
   ClapAttack_InitKeyStore( NumKeys, &GlobalBsiKeys );
   MaxProbes = 3;
 
+  //Update KIFs and set visited/leaks to zero
+  i = 0;
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
     pNode->visited = 0;
     pNode->leaks = 0;
     pNode->KIF = 0;
-  }
-
-  //Update KIFs
-  i = 0;
-  Abc_NtkForEachNode( pNtk, pNode, i )
-  {
     ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0);
     Abc_NtkForEachPi( pNtkCone, pPi, j )
     {
@@ -734,7 +730,7 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
 
 int AdjoiningGate_UpdateGateTypes(Abc_Frame_t * pAbc)
 {
-  /*Abc_Ntk_t *pNtk;
+  Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
   int i = 0;
   char * pSop;
@@ -745,7 +741,6 @@ int AdjoiningGate_UpdateGateTypes(Abc_Frame_t * pAbc)
     Abc_Print(-1, "Getting the target network has failed.\n");
     return 0;
   }
-  //Abc_NtkToSop( pNtk, -1, ABC_INFINITY );
   //First Pass - AND, INV
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
@@ -759,25 +754,21 @@ int AdjoiningGate_UpdateGateTypes(Abc_Frame_t * pAbc)
         pNode->gate = 2; //AND
     }
   }
-
+  
   //Second Pass - OR, XOR
-  Abc_NtkToSop( pNtk, -1, ABC_INFINITY );
+  Abc_NtkToSop( pNtk, 1, ABC_INFINITY );
+  //Abc_NtkToSop( pNtk, -1, ABC_INFINITY );
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
     if(pNode->gate == 0)
     {
       pSop = (char *)pNode->pData;
-
-      if ( Abc_SopIsConst0(pSop) || Abc_SopIsConst1(pSop) )
-        pNode->gate = 6; //CST
-      else if ( Abc_SopIsBuf(pSop) )
-        pNode->gate = 5; //BUF
-      else if ( Abc_SopIsExorType(pSop) )
+      if (Abc_SopIsOrType(pSop))
+        pNode->gate = 1; //OR*/
+      else
         pNode->gate = 3; //XOR
-      else if ( (!Abc_SopIsComplement(pSop) && Abc_SopIsAndType(pSop)) || ( Abc_SopIsComplement(pSop) && Abc_SopIsOrType(pSop)) )
-        pNode->gate = 1; //OR
     }
-  }*/
+  }
   return 1;
 }
 
@@ -1011,20 +1002,8 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
   // Goal: For each PI that is a key, follow fanout until it intersects with unknown key.
   Abc_ObjForEachFanout(pCurNode, pNode, i)
   {
-    /*if(strstr(Abc_ObjName(pNode), "n568")) // Test Statement
-    {
-      printf("Grouped Node That Leaks: %s\n",Abc_ObjName(pNode));
-      printf("Fanout From: %s\n",Abc_ObjName(pCurNode));
-      printf("Adjacency Tag: %d\n", pNode->adjTag);
-      printf("KIF: %d\n", pNode->KIF);
-      printf("NumKeys: %d\n", NumKeys);
-      printf("MaxKeysConsidered: %d\n", MaxKeysConsidered);
-      printf("We are looking for (NumKeys == MaxKeysConsidered) && NumKeys\n");
-      printf("\n");
-    }*/
-
     // Have we visited this node before?
-    if (pNode->visited == 0)
+    if (!pNode->visited)
     {
       // Initialzie free list to the number of keys present...
       ppNodeFreeList = (Abc_Obj_t **)malloc(sizeof(Abc_Obj_t *) * pGlobalBsiKeys->NumKeys);
@@ -1101,6 +1080,18 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
             pNode->visited = 1; // Node visited
             pNode->leaks = 1; // Node leaks key information
             (*pNumProbes)++;
+
+            /*if(strstr(Abc_ObjName(pNode), "n568")) // Test Statement
+            {
+              printf("Grouped Node That Leaks: %s\n",Abc_ObjName(pNode));
+              printf("Fanout From: %s\n",Abc_ObjName(pCurNode));
+              printf("Adjacency Tag: %d\n", pNode->adjTag);
+              printf("KIF: %d\n", pNode->KIF);
+              printf("NumKeys: %d\n", NumKeys);
+              printf("MaxKeysConsidered: %d\n", MaxKeysConsidered);
+              printf("We are looking for (NumKeys == MaxKeysConsidered) && NumKeys\n");
+              printf("\n");
+            }*/
 
             //Mark all nodes on the leaky node's fanout as leaking
             /*i = 0;
