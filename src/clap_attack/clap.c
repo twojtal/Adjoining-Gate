@@ -213,7 +213,7 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
       {
         // Set the update var to 0. IF we change our keystore, set it back to 1 and re-loop over the tree.
         GlobalBsiKeys.Updated = 0;
-
+        i = 0;
         Abc_NtkForEachPi(pNtk, pPi, i)
         {
           // Are we looking at a key input? And do we know it?-- If so, begin fanout
@@ -734,7 +734,7 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
 
 int AdjoiningGate_UpdateGateTypes(Abc_Frame_t * pAbc)
 {
-  Abc_Ntk_t *pNtk;
+  /*Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
   int i = 0;
   char * pSop;
@@ -777,7 +777,7 @@ int AdjoiningGate_UpdateGateTypes(Abc_Frame_t * pAbc)
       else if ( (!Abc_SopIsComplement(pSop) && Abc_SopIsAndType(pSop)) || ( Abc_SopIsComplement(pSop) && Abc_SopIsOrType(pSop)) )
         pNode->gate = 1; //OR
     }
-  }
+  }*/
   return 1;
 }
 
@@ -999,7 +999,7 @@ void ClapAttack_CombineMitersHeuristic(struct SatMiterList **ppSatMiterListOld, 
 // Recurseively traverse nodes in the network to identify probe-able locations.
 void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys, int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf, struct SatMiterList **ppSatMiterList, int *pNumProbes, int MaxProbes, int probeResolutionSize, int grouped)
 {
-  int i, j, k, SatStatus, MiterStatus, NumKeys, NumKnownKeys, fCurKeyCnfAlloc;
+  int i = 0, j = 0, k = 0, SatStatus, MiterStatus, NumKeys, NumKnownKeys, fCurKeyCnfAlloc;
   Abc_Ntk_t *pNtkCone, *pNtkMiter;
   Abc_Obj_t *pNode, *pPi, **ppNodeFreeList;
   char **KeyNameTmp;
@@ -1011,6 +1011,18 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
   // Goal: For each PI that is a key, follow fanout until it intersects with unknown key.
   Abc_ObjForEachFanout(pCurNode, pNode, i)
   {
+    /*if(strstr(Abc_ObjName(pNode), "n568")) // Test Statement
+    {
+      printf("Grouped Node That Leaks: %s\n",Abc_ObjName(pNode));
+      printf("Fanout From: %s\n",Abc_ObjName(pCurNode));
+      printf("Adjacency Tag: %d\n", pNode->adjTag);
+      printf("KIF: %d\n", pNode->KIF);
+      printf("NumKeys: %d\n", NumKeys);
+      printf("MaxKeysConsidered: %d\n", MaxKeysConsidered);
+      printf("We are looking for (NumKeys == MaxKeysConsidered) && NumKeys\n");
+      printf("\n");
+    }*/
+
     // Have we visited this node before?
     if (pNode->visited == 0)
     {
@@ -1086,19 +1098,21 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
           if (!SatStatus)
           {
             // Update SAT node list with new Sat miter
-            /*if(grouped)//strstr(Abc_ObjName(pNode), "n568")) // Test Statement
-            {
-              printf("Grouped Node That Leaks: %s\n",Abc_ObjName(pNode));
-              printf("Adjacency Tag: %d\n", pNode->adjTag);
-              printf("KIF: %d\n", pNode->KIF);
-              printf("NumKeys: %d\n", NumKeys);
-              printf("MaxKeysConsidered: %d\n", MaxKeysConsidered);
-              printf("We are looking for (NumKeys == MaxKeysConsidered) && NumKeys\n");
-              printf("\n");
-            }*/
             pNode->visited = 1; // Node visited
             pNode->leaks = 1; // Node leaks key information
             (*pNumProbes)++;
+
+            //Mark all nodes on the leaky node's fanout as leaking
+            /*i = 0;
+            Abc_Obj_t *pNodeTemp;
+            Abc_ObjForEachFanout(pNode, pNodeTemp, i)
+            {
+              if(!Abc_ObjIsCo(pNodeTemp))
+              {
+                pNodeTemp->visited = 1;
+                pNodeTemp->leaks = 1;
+              }
+            }*/
             // ClapAttack_UpdateSatMiterList( ppSatMiterList, &pNode, pNtkMiter, NumKeys, KeyNameTmp, 1, 1.0/(1<<(MaxKeysConsidered-1)), pNtkMiter->pModel );
           }
           else
