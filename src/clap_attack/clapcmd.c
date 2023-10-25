@@ -18,9 +18,9 @@ void ClapAttack_Init(Abc_Frame_t * pAbc) {
   Cmd_CommandAdd(pAbc, "Various", "list", AdjoiningGate_ListNetwork_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "bfs", AdjoiningGate_BFS_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "add", AdjoiningGate_AddNode_CMD, 0);
-  Cmd_CommandAdd(pAbc, "Various", "rep", AdjoiningGate_ReplaceNode_CMD, 0);
-  //Cmd_CommandAdd(pAbc, "Various", "rem", AdjoiningGate_RemoveNode_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "run", AdjoiningGate_Run_CMD, 0);
+  //Cmd_CommandAdd(pAbc, "Various", "rep", AdjoiningGate_ReplaceNode_CMD, 0);
+  //Cmd_CommandAdd(pAbc, "Various", "rem", AdjoiningGate_RemoveNode_CMD, 0);
 }
 
 int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)

@@ -109,7 +109,7 @@ int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int 
 
 int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder)
 {
-  int i, j = 0, NumKeys, KeyIndex, MaxKeysConsidered, MaxNodesConsidered;
+  int i, j = 0, NumKeys, MaxKeysConsidered, MaxNodesConsidered;
   Abc_Ntk_t *pNtk, *pCurKeyCnf, *pNtkCone;
   Abc_Obj_t *pPi, *pNode;
   struct BSI_KeyData_t GlobalBsiKeys;
@@ -157,10 +157,10 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
   // Count keys
   NumKeys = ClapAttack_GetNumKeys( pNtk );
   ClapAttack_InitKeyStore( NumKeys, &GlobalBsiKeys );
-  MaxProbes = 3;
+  MaxProbes = 1000;//3;
 
   //Update KIFs and set visited/leaks to zero
-  i = 0;
+  i = 0, j = 0;
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
     pNode->visited = 0;
@@ -169,7 +169,7 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
     ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0);
     Abc_NtkForEachPi( pNtkCone, pPi, j )
     {
-      if (!strstr(Abc_ObjName(pPi), "key"))
+      if (strstr(Abc_ObjName(pPi), "key"))
       {
         pNode->KIF++;
       }
@@ -197,10 +197,11 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
   {
     // Iteratively increase the number of keys we are willing to consider in the fan-in for a probe-able node
     // This ensures that only the best node at a given time will be considered for probing
-    for (MaxKeysConsidered = 1; MaxKeysConsidered < keysConsideredCutoff; MaxKeysConsidered++)
-    {
+    //for (MaxKeysConsidered = 1; MaxKeysConsidered < keysConsideredCutoff; MaxKeysConsidered++)
+    //{
+      MaxKeysConsidered = keysConsideredCutoff;
       // How many keys are we currently considering?
-      // printf("Set Number of Keys considered to: %d\n\n", MaxKeysConsidered);
+      printf("Set Number of Keys considered to: %d\n\n", MaxKeysConsidered);
       GlobalBsiKeys.Updated = 1;
       fConsiderAll = 1;
 
@@ -216,18 +217,19 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
           if (strstr(Abc_ObjName(pPi), "key"))
           {
             // Get key index
-            KeyIndex = (int)strtol(&((Abc_ObjName(pPi))[8]), (char **)NULL, 10);
+            //KeyIndex = (int)strtol(&((Abc_ObjName(pPi))[8]), (char **)NULL, 10);
 
             // Do we know this key index?
-            if (GlobalBsiKeys.KeyValue[KeyIndex] < 0)
-            {
+            /*if (GlobalBsiKeys.KeyValue[KeyIndex] < 0)
+            {*/
               pCurKeyCnf = NULL;
               NumProbes = 0;
+
 
               // Start traversal of tree -- any new key inference will set the updated variable and
               // restart new traversal
               ClapAttack_TraversalRecursiveHeuristic(pNtk, pPi, &GlobalBsiKeys, MaxKeysConsidered, &GlobalBsiKeys.pKeyCnf, &pSatMiterList, &NumProbes, MaxProbes, probeResolutionSize, grouped);
-            }
+            //}
           }
         }
 
@@ -282,7 +284,7 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
           printf("\n");
         }
       }
-    }
+    //}
 
     // If there were satisfying inputs identified, simulate the EOFM probe of these nodes with our inputs.
     if (pSatMiterList)
@@ -544,7 +546,7 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
 int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
 {
   Abc_Ntk_t *pNtk, *pNtkCone;
-  Abc_Obj_t *newNode, *pNode, *pPi, *pPiSource;
+  Abc_Obj_t *newNode, *pNode, *pPi, *pPiSource, *newPo;
   Vec_Ptr_t *vFanins;
   int i=0, j=0, k=0;
 
@@ -607,23 +609,15 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         newNode = Abc_NtkCreateNodeExor( pNtk, vFanins);
       }
       //Assign the adjoining gate a name
-      char subbuff[10];
-      memcpy( subbuff, Abc_ObjName(pNode), 5 );
-      subbuff[5] = '\0';
-      strcat(subbuff,"adj");
-      Abc_ObjAssignName( newNode, subbuff, NULL );
+      Abc_ObjAssignName( newNode, Abc_ObjName(pNode), "adj" );
       
       //newNode->gate = gateType; //Set the gate type
       newNode->Level = 1; // The level will now be 1
 
       //Creating primary output for added node
-      Abc_Obj_t *newPo = Abc_NtkCreatePo( pNtk );
-      char subbuff2[15];
-      memcpy( subbuff2, Abc_ObjName(pNode), 5 );
-      subbuff2[5] = '\0';
-      strcat(subbuff2,"adjPo");
-      Abc_ObjAssignName( newPo, subbuff2, NULL );
-      Abc_ObjAddFanin(newPo, newNode);
+      newPo = Abc_NtkCreatePo( pNtk );
+      Abc_ObjAssignName( newPo, Abc_ObjName(pNode), "adjPo" );
+      Abc_ObjAddFanin( newPo, newNode );
 
       if(highestTag!=0 && adjGrouping>1) //If the network is grouped
       {
@@ -1061,7 +1055,7 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
       if (NumKnownKeys) ClapAttack_DelKnownKeys(ppNodeFreeList, NumKnownKeys);
 
       // Can we evaluate this node (i.e. does it have the currently considered number of keys as input)?
-      if ((NumKeys == MaxKeysConsidered) && NumKeys)
+      if ((NumKeys <= MaxKeysConsidered) && NumKeys)
       {
         // Generate the logical miter to infer whether key leakage occurs at this node.
         // printf("Evaluating node %s\n", Abc_ObjName(pNode));
@@ -1080,30 +1074,6 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
             pNode->visited = 1; // Node visited
             pNode->leaks = 1; // Node leaks key information
             (*pNumProbes)++;
-
-            /*if(strstr(Abc_ObjName(pNode), "n568")) // Test Statement
-            {
-              printf("Grouped Node That Leaks: %s\n",Abc_ObjName(pNode));
-              printf("Fanout From: %s\n",Abc_ObjName(pCurNode));
-              printf("Adjacency Tag: %d\n", pNode->adjTag);
-              printf("KIF: %d\n", pNode->KIF);
-              printf("NumKeys: %d\n", NumKeys);
-              printf("MaxKeysConsidered: %d\n", MaxKeysConsidered);
-              printf("We are looking for (NumKeys == MaxKeysConsidered) && NumKeys\n");
-              printf("\n");
-            }*/
-
-            //Mark all nodes on the leaky node's fanout as leaking
-            /*i = 0;
-            Abc_Obj_t *pNodeTemp;
-            Abc_ObjForEachFanout(pNode, pNodeTemp, i)
-            {
-              if(!Abc_ObjIsCo(pNodeTemp))
-              {
-                pNodeTemp->visited = 1;
-                pNodeTemp->leaks = 1;
-              }
-            }*/
             // ClapAttack_UpdateSatMiterList( ppSatMiterList, &pNode, pNtkMiter, NumKeys, KeyNameTmp, 1, 1.0/(1<<(MaxKeysConsidered-1)), pNtkMiter->pModel );
           }
           else
@@ -1128,8 +1098,20 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
       free(ppNodeFreeList);
     }
 
+    /*if(strstr(Abc_ObjName(pNode), "n568")) // Test Statement
+    {
+      printf("Grouped Node That Leaks: %s\n",Abc_ObjName(pNode));
+      printf("Fanout From: %s\n",Abc_ObjName(pCurNode));
+      printf("Adjacency Tag: %d\n", pNode->adjTag);
+      printf("KIF: %d\n", pNode->KIF);
+      printf("NumKeys: %d\n", NumKeys);
+      printf("MaxKeysConsidered: %d\n", MaxKeysConsidered);
+      printf("We are looking for (NumKeys == MaxKeysConsidered) && NumKeys\n");
+      printf("\n");
+    }*/
+
     // Recurse
-    if ((NumKeys <= MaxKeysConsidered) && (*pNumProbes <= MaxProbes))
+    if ( (NumKeys <= MaxKeysConsidered) )//&& (*pNumProbes <= MaxProbes))
     {
       ClapAttack_TraversalRecursiveHeuristic(pNtk, pNode, pGlobalBsiKeys, MaxKeysConsidered, ppCurKeyCnf, ppSatMiterList, pNumProbes, MaxProbes, probeResolutionSize, grouped);
     }

@@ -86,6 +86,15 @@ Additionally, one can find the partially unlocked `physical_clap_out.bench` file
 
 All benchmarks from the ICCAD'22 manuscript can be found in the `probing_benchmarks` directory. The correct key value for each of these benchmarks is contained in the `probing_benchmarks/iccad_benchmark_keys.txt`.
 
+b14:
+read_bench ./probing_benchmarks/b14/SLL/b14_SLL.bench
+16-bit SEC/DED Circuit:
+read_bench ./probing_benchmarks/c1908/SLL/c1908_SLL.bench
+9-Bit ALU:
+read_bench ./probing_benchmarks/c5315/SLL/c5315_SLL.bench
+des:
+read_bench ./probing_benchmarks/des/SLL/des_SLL.bench
+
 ## Troubleshooting:
 
 **NOTE:** Currently, the underscore character ("_") is a restricted character for signal/net names in benchmark files. You will see memory leaks and seg-faults if you have these in the file. If you find/replace these characters with something else (e.g., a dash "-"), you can temporarily work around this issue. This will be patched in the near future. Thank you to Likhitha Mankali (NYU) for reaching out to me with this issue!
