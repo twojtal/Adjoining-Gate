@@ -559,7 +559,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
   }
   Abc_NtkForEachNode( pNtk, pNode, i )
   {
-    if(strstr(Abc_ObjName( pNode ), targetNode)) // Finding the target node
+    if(!strcmp(Abc_ObjName( pNode ), targetNode)) // Finding the target node
     {
       ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0); // Isolate the targey node's fanin cone
       //Isolating the Non-Key Dependent Primary Inputs:
@@ -572,7 +572,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         {
           Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
           {
-            if (strstr(Abc_ObjName(pPiSource), Abc_ObjName(pPi)))
+            if (!strcmp(Abc_ObjName(pPiSource), Abc_ObjName(pPi)))
             {
               Vec_PtrSetEntry(vFanins, j, pPiSource);
               tempName = Abc_ObjName(pPi);
@@ -587,7 +587,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         int k = 0;
         Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
         {
-          if (!strstr(Abc_ObjName(pPiSource), "key") && !strstr(Abc_ObjName(pPiSource), tempName)) // If the input is not a key and not the same input as earlier
+          if (!strstr(Abc_ObjName(pPiSource), "key") && strcmp(Abc_ObjName(pPiSource), tempName) != 0) // If the input is not a key and not the same input as earlier
           {
             Vec_PtrSetEntry(vFanins, 1, pPiSource);
             printf("Found a node with fanin 1 and added an extra input.");
@@ -1100,7 +1100,7 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
 
     /*if(strstr(Abc_ObjName(pNode), "n568")) // Test Statement
     {
-      printf("Grouped Node That Leaks: %s\n",Abc_ObjName(pNode));
+      printf("Node: %s\n",Abc_ObjName(pNode));
       printf("Fanout From: %s\n",Abc_ObjName(pCurNode));
       printf("Adjacency Tag: %d\n", pNode->adjTag);
       printf("KIF: %d\n", pNode->KIF);
