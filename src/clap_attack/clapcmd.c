@@ -283,7 +283,7 @@ int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
 
   // set defaults
   fVerbose = 0;
-  gateType = 1; // Default = 1 (OR)
+  gateType = 2; // Default = 2 (AND)
 
   // get arguments
   Extra_UtilGetoptReset();
@@ -332,23 +332,23 @@ int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
 
   if (gate == NULL)
   {
-    fprintf( pAbc->Out, "No gate type specified. Proceeding with default (OR).\n" );
+    fprintf( pAbc->Out, "No gate type specified. Proceeding with default (NAND).\n" );
   }
   else
   {
     if(strcmp(gate,"or") == 0)
     {
-      fprintf( pAbc->Out, "Adding gate type: OR.\n" );
+      fprintf( pAbc->Out, "Adding gate type: NOR.\n" );
       gateType = 1;
     }
     else if(strcmp(gate,"and") == 0)
     {
-      fprintf( pAbc->Out, "Adding gate type: AND.\n" );
+      fprintf( pAbc->Out, "Adding gate type: NAND.\n" );
       gateType = 2;
     }
     else if(strcmp(gate,"xor") == 0)
     {
-      fprintf( pAbc->Out, "Adding gate type: XOR.\n" );
+      fprintf( pAbc->Out, "Adding gate type: NXOR.\n" );
       gateType = 3;
     }
     else
@@ -525,7 +525,7 @@ int AdjoiningGate_Run_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
 {
   int fVerbose;
   int c, result;
-  int gateType = 1;
+  int gateType = 2; //Default (NAND)
   char *gate = NULL;
 
   // set defaults
@@ -565,23 +565,23 @@ int AdjoiningGate_Run_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
 
   if (gate == NULL)
   {
-    fprintf( pAbc->Out, "No gate type specified. Proceeding with default (OR).\n" );
+    fprintf( pAbc->Out, "No gate type specified. Proceeding with default (NAND).\n" );
   }
   else
   {
     if(strcmp(gate,"or") == 0)
     {
-      fprintf( pAbc->Out, "Adding gate type: OR.\n" );
+      fprintf( pAbc->Out, "Adding gate type: NOR.\n" );
       gateType = 1;
     }
     else if(strcmp(gate,"and") == 0)
     {
-      fprintf( pAbc->Out, "Adding gate type: AND.\n" );
+      fprintf( pAbc->Out, "Adding gate type: NAND.\n" );
       gateType = 2;
     }
     else if(strcmp(gate,"xor") == 0)
     {
-      fprintf( pAbc->Out, "Adding gate type: XOR.\n" );
+      fprintf( pAbc->Out, "Adding gate type: NXOR.\n" );
       gateType = 3;
     }
     else

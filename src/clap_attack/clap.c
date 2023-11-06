@@ -546,7 +546,7 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
 int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
 {
   Abc_Ntk_t *pNtk, *pNtkCone;
-  Abc_Obj_t *newNode, *pNode, *pPi, *pPiSource, *newPo;
+  Abc_Obj_t *newNode, *newNodeInv, *pNode, *pPi, *pPiSource, *newPo;
   Vec_Ptr_t *vFanins;
   int i=0, j=0, k=0;
 
@@ -581,7 +581,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           }
         }
       }
-      // Check if the list of fanins is 1
+      // Check if the list of fanins is 1 (Add another non-key fanininput so that we don't have a one-input gate)
       if (addedFanins == 1)
       {
         int k = 0;
@@ -610,20 +610,26 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       }
       //Assign the adjoining gate a name
       Abc_ObjAssignName( newNode, Abc_ObjName(pNode), "adj" );
-      
+
       //newNode->gate = gateType; //Set the gate type
       newNode->Level = 1; // The level will now be 1
+
+      //Add an inverter on its output:
+      newNodeInv = Abc_NtkCreateNodeInv(pNtk, newNode);
+      Abc_ObjAssignName( newNodeInv, Abc_ObjName(newNode), "I" );
+      newNodeInv->Level = 2; // The level will now be 1
 
       //Creating primary output for added node
       newPo = Abc_NtkCreatePo( pNtk );
       Abc_ObjAssignName( newPo, Abc_ObjName(pNode), "adjPo" );
-      Abc_ObjAddFanin( newPo, newNode );
+      Abc_ObjAddFanin( newPo, newNodeInv );
 
       if(highestTag!=0 && adjGrouping>1) //If the network is grouped
       {
         highestTag++; //Incrementing the highest tag
         pNode->adjTag = highestTag; //Putting the target node in its own group
         newNode->adjTag = pNode->adjTag; //Add new node to the adjacency group, "orphaning" the non-target nodes
+        //newNodeInv->adjTag = pNode->adjTag; //We want the adjacency tags to stay at 0
       }
       printf("\nNode %s added.\n", Abc_ObjName( newNode ));
       return 1;
