@@ -353,7 +353,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping )
   printf("Network List:\n");
   if(aGrouping)
   {
-		// Update the highest tag (needs to be here)
+		// Update the highest tag (this needs to be here)
     highestTag = 0;
     Abc_NtkForEachNode( pNtk, pNode, i )
     {
@@ -363,7 +363,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping )
       }
     }
 		
-    for(int j = 0; j<=highestTag; j++)
+    for(int j = 1; j<=highestTag; j++) //Starting at 1 (Don't include non-grouped nodes)
     {
       Abc_NtkForEachNode( pNtk, pNode, i )
       {
@@ -518,7 +518,7 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
   }
 
   //BFS ALGORITHM
-  for(level = 1; level <= Abc_NtkLevel(pNtk); level++)
+  for(level = 1; level <= Abc_NtkLevel(pNtk); level++) //BFS grouping starts at 1
   {
     Abc_NtkForEachNode( pNtk, pNode, i )
     {
@@ -561,9 +561,9 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
   {
     if(!strcmp(Abc_ObjName( pNode ), targetNode)) // Finding the target node
     {
-      ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0); // Isolate the targey node's fanin cone
+      ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0); // Isolate the target node's fanin cone
       //Isolating the Non-Key Dependent Primary Inputs:
-      vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins
+      vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins (Just in case)
       int addedFanins = 0;
       char *tempName;
       Abc_NtkForEachPi( pNtkCone, pPi, j ) // Traverse all primary inputs to the node
@@ -629,7 +629,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         highestTag++; //Incrementing the highest tag
         pNode->adjTag = highestTag; //Putting the target node in its own group
         newNode->adjTag = pNode->adjTag; //Add new node to the adjacency group, "orphaning" the non-target nodes
-        //newNodeInv->adjTag = pNode->adjTag; //We want the adjacency tags to stay at 0
+        newNodeInv->adjTag = 0; //We want the adjacency tags to stay at 0 so it doesn't show up in scan
       }
       printf("\nNode %s added.\n", Abc_ObjName( newNode ));
       return 1;
@@ -1076,6 +1076,14 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
           // Did SAT return sensitizing inputs?
           if (!SatStatus)
           {
+            //Print sensitizing pattern
+            printf("Leaky node %s: \n", Abc_ObjName(pNode));
+            //ClapAttack_PrintInp( pNtkMiter, pNtkMiter->pModel );
+            for (int m = 0; m < Abc_NtkPiNum(pNtkMiter); m++)
+            {
+              Abc_Print(1, "Input %d: %d\n", m, pNtkMiter->pModel[m]);
+            }
+
             // Update SAT node list with new Sat miter
             pNode->visited = 1; // Node visited
             pNode->leaks = 1; // Node leaks key information
@@ -1103,18 +1111,6 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
       free(KeyNameTmp);
       free(ppNodeFreeList);
     }
-
-    /*if(strstr(Abc_ObjName(pNode), "n568")) // Test Statement
-    {
-      printf("Node: %s\n",Abc_ObjName(pNode));
-      printf("Fanout From: %s\n",Abc_ObjName(pCurNode));
-      printf("Adjacency Tag: %d\n", pNode->adjTag);
-      printf("KIF: %d\n", pNode->KIF);
-      printf("NumKeys: %d\n", NumKeys);
-      printf("MaxKeysConsidered: %d\n", MaxKeysConsidered);
-      printf("We are looking for (NumKeys == MaxKeysConsidered) && NumKeys\n");
-      printf("\n");
-    }*/
 
     // Recurse
     if ( (NumKeys <= MaxKeysConsidered) )//&& (*pNumProbes <= MaxProbes))
@@ -1573,7 +1569,6 @@ int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pP
   char nameArr[adjGrouping][10]; // Array to store node names
   strcpy(nameArr[0], Abc_ObjName(pCurrentProbe)); // Store the first node name into the array
   // Loop for traversing other probes
-  //printf("Group %d: ",pCurrentProbe->adjTag);
   for (int resolutionLevel = 1; resolutionLevel < probeResolution && Abc_ObjFanoutNum(pCurrentProbe); resolutionLevel++)
   {
     Abc_Obj_t *pNextProbe = Abc_ObjFanout0(pCurrentProbe); //Assign by default
@@ -1676,25 +1671,18 @@ int ClapAttack_IsolateCone(Abc_Ntk_t *pNtk, Abc_Ntk_t **ppNtkCone, Abc_Obj_t *pP
       pCurrentProbe = pNextProbe;
     }
   }
-  //printf("\n"); // TEST STATEMENT
-
-  /*for(int x = 0; x<adjGrouping; x++) //TEST STATEMENT FOR ARRAY
-  {
-      printf("%s, ",nameArr[x]);
-  }
-  printf("\n");*/
 
   // make sure that everything is okay
   if (!Abc_NtkCheck(*ppNtkCone))
   {
     printf("Abc_NtkOrPos: The network check has failed.\n");
-    //free(ignoreFanins);
-    //free(pProbes);
+    free(ignoreFanins);
+    free(pProbes);
     return 1;
   }
 
-  //free(ignoreFanins);
-  //free(pProbes);
+  free(ignoreFanins);
+  free(pProbes);
 
   return 0;
 }
@@ -2116,8 +2104,8 @@ int ClapAttack_RunSat(Abc_Ntk_t *pNtk) {
         pCex = Abc_CexCreate(0, Abc_NtkPiNum(pNtk), pNtk->pModel, 0, 0, 0);
 
         // DEBUG: Print full input/output
-        // ClapAttack_PrintInp( pNtk, pNtk->pModel );
-        // ClapAttack_PrintOut( pNtk, pSimInfo );
+        //ClapAttack_PrintInp( pNtk, pNtk->pModel );
+        //ClapAttack_PrintOut( pNtk, pSimInfo );
 
         ABC_FREE(pSimInfo);
         ABC_FREE(pCex);
