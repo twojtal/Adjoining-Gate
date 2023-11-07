@@ -546,8 +546,8 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
 int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
 {
   Abc_Ntk_t *pNtk, *pNtkCone;
-  Abc_Obj_t *newNode, *newNodeInv, *pNode, *pPi, *pPiSource, *newPo;
-  Vec_Ptr_t *vFanins;
+  Abc_Obj_t *newNode, *newNodeInv, *newNodeXOR, *pNode, *pPi, *pPiSource, *newPo;
+  Vec_Ptr_t *vFanins, *vFaninsXOR;
   int i=0, j=0, k=0;
 
   printf("\nAdd Node Function:\n");
@@ -564,61 +564,115 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0); // Isolate the target node's fanin cone
       //Isolating the Non-Key Dependent Primary Inputs:
       vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins (Just in case)
-      int addedFanins = 0;
+      int addedFanins = 0, inputCounter = 0;
       char *tempName;
+      //Initial run: Find how many non-KIF inputs there are
       Abc_NtkForEachPi( pNtkCone, pPi, j ) // Traverse all primary inputs to the node
       {
         if (!strstr(Abc_ObjName(pPi), "key")) // If the input is not a key
         {
+          inputCounter++;
+        }
+      }
+
+      if(inputCounter>4)
+      {
+        // Creating Data Structures for XOR Gate
+        vFaninsXOR = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins (Just in case)
+
+        // Filling the Adjoining Gate
+        Abc_NtkForEachPi( pNtkCone, pPi, j ) // Traverse all primary inputs to the node
+        {
+          if (!strstr(Abc_ObjName(pPi), "key")) // If the input is not a key
+          {
+            Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
+            {
+              if (!strcmp(Abc_ObjName(pPiSource), Abc_ObjName(pPi))) // If the names match
+              {
+                if(addedFanins < 3)
+                {
+                  Vec_PtrSetEntry(vFanins, addedFanins, pPiSource);
+                }
+                else
+                {
+                  Vec_PtrSetEntry(vFaninsXOR, (addedFanins-3), pPiSource);
+                }
+                addedFanins++;
+              }
+            }
+          }
+        }
+        // Create and wire up the XOR gate
+        newNodeXOR = Abc_NtkCreateNodeExor( pNtk, vFaninsXOR);
+        Abc_ObjAssignName( newNodeXOR, Abc_ObjName(pNode), "adjXOR" );
+        newNodeXOR->Level = 1;
+        newNodeXOR->adjTag = 0;
+        Vec_PtrSetEntry(vFanins, 3, newNodeXOR);
+      }
+      else // Make this an if(1) for everything to work as previously.
+      {
+        Abc_NtkForEachPi( pNtkCone, pPi, j ) // Traverse all primary inputs to the node
+        {
+          if (!strstr(Abc_ObjName(pPi), "key")) // If the input is not a key
+          {
+            Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
+            {
+              if (!strcmp(Abc_ObjName(pPiSource), Abc_ObjName(pPi))) // If the names match
+              {
+                Vec_PtrSetEntry(vFanins, addedFanins, pPiSource);
+                tempName = Abc_ObjName(pPi);
+                addedFanins++;
+              }
+            }
+          }
+        }
+        // Check if the list of fanins is 1 (Add another non-key fanininput so that we don't have a one-input gate)
+        if (addedFanins == 1)
+        {
+          int k = 0;
           Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
           {
-            if (!strcmp(Abc_ObjName(pPiSource), Abc_ObjName(pPi)))
+            if (!strstr(Abc_ObjName(pPiSource), "key") && strcmp(Abc_ObjName(pPiSource), tempName) != 0) // If the input is not a key and not the same input as earlier
             {
-              Vec_PtrSetEntry(vFanins, j, pPiSource);
-              tempName = Abc_ObjName(pPi);
-              addedFanins++;
+              Vec_PtrSetEntry(vFanins, 1, pPiSource);
+              printf("Found a node with fanin 1 and added an extra input.");
+              break;
             }
           }
         }
       }
-      // Check if the list of fanins is 1 (Add another non-key fanininput so that we don't have a one-input gate)
-      if (addedFanins == 1)
-      {
-        int k = 0;
-        Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
-        {
-          if (!strstr(Abc_ObjName(pPiSource), "key") && strcmp(Abc_ObjName(pPiSource), tempName) != 0) // If the input is not a key and not the same input as earlier
-          {
-            Vec_PtrSetEntry(vFanins, 1, pPiSource);
-            printf("Found a node with fanin 1 and added an extra input.");
-            break;
-          }
-        }
-      }
 
-      if(gateType == 1)
+      if(gateType == 1) //Will create a NOR
       {
         newNode = Abc_NtkCreateNodeOr( pNtk, vFanins);
       }
-      else if(gateType == 2)
+      else if(gateType == 2) //Will create a NAND
       {
         newNode = Abc_NtkCreateNodeAnd( pNtk, vFanins);
       }
       else
       {
-        newNode = Abc_NtkCreateNodeExor( pNtk, vFanins);
+        newNode = Abc_NtkCreateNodeExor( pNtk, vFanins); //Will create a NXOR
       }
       //Assign the adjoining gate a name
       Abc_ObjAssignName( newNode, Abc_ObjName(pNode), "adj" );
 
-      //newNode->gate = gateType; //Set the gate type
-      newNode->Level = 1; // The level will now be 1
-
       //Add an inverter on its output:
       newNodeInv = Abc_NtkCreateNodeInv(pNtk, newNode);
       Abc_ObjAssignName( newNodeInv, Abc_ObjName(newNode), "I" );
-      newNodeInv->Level = 2; // The level will now be 1
 
+      //Set Levels
+      if(inputCounter>4)
+      {
+        newNode->Level = 2; // The level will now be 2
+        newNodeInv->Level = 3;
+      }
+      else
+      {
+        newNode->Level = 1; // The level will now be 1
+        newNodeInv->Level = 2;
+      }
+      
       //Creating primary output for added node
       newPo = Abc_NtkCreatePo( pNtk );
       Abc_ObjAssignName( newPo, Abc_ObjName(pNode), "adjPo" );
@@ -1078,7 +1132,6 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
           {
             //Print sensitizing pattern
             printf("Leaky node %s: \n", Abc_ObjName(pNode));
-            //ClapAttack_PrintInp( pNtkMiter, pNtkMiter->pModel );
             for (int m = 0; m < Abc_NtkPiNum(pNtkMiter); m++)
             {
               Abc_Print(1, "Input %d: %d\n", m, pNtkMiter->pModel[m]);
@@ -1884,7 +1937,7 @@ int ClapAttack_MakeMiterHeuristic(Abc_Ntk_t *pNtkCone, Abc_Ntk_t *pNtkPartialKey
 
     // Build partial key logic miter.
     pNtkPartialKeyMiter = NULL;
-    if (pNtkPartialKey) {
+    if (pNtkPartialKey) { 
         // Duplicate partial key logic to generate miter
         pNtkPartialKeyMiter = Abc_NtkDup(pNtkPartialKey);
 
@@ -2116,7 +2169,7 @@ int ClapAttack_RunSat(Abc_Ntk_t *pNtk) {
 
 // Note that this fails on underscore characters for some reason...
 // Determine which key value leads to presence/absence of an EOFM probe frequency component.
-// This is later used to infer the key value based on teh presence/absence of frequency component.
+// This is later used to infer the key value based on the presence/absence of frequency component.
 // I.e. to infer the key value.
 void ClapAttack_InterpretDiHeuristic(Abc_Ntk_t *pNtk, Abc_Ntk_t *pNtkMiter, int *pModel, int NumKeys, int *KeyWithFreq,
                                      int *KeyNoFreq, int **ppDiFull) {
