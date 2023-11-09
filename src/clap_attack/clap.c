@@ -549,7 +549,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
   Abc_Obj_t *newNode, *newNodeInv, *pNode, *pPi, *pPiSource, *newPo;
   Vec_Ptr_t *vFanins;
   struct BSI_KeyData_t GlobalBsiKeys;
-  int i=0, j=0, k=0, NumKeys = 0, NumKnownKeys = 0;
+  int i=0, j=0, k=0, *KeyWithFreq, *KeyNoFreq, NumKeys;
   int *pDi, *pDi1, *pDi2;
 
   printf("Add Node Function:\n");
@@ -560,19 +560,20 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
     return 0;
   }
 
-  NumKeys = ClapAttack_GetNumKeys( pNtk );
-  ClapAttack_InitKeyStore( NumKeys, &GlobalBsiKeys );
-
   Abc_NtkForEachNode( pNtk, pNode, i ) // Traverse all nodes
   {
     if(!strcmp(Abc_ObjName( pNode ), targetNode)) // If this is the target node
     {
       ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0); // Isolate the target node's fanin cone (single resolution)
 
+      NumKeys = ClapAttack_GetNumKeys( pNtkCone );
+      ClapAttack_InitKeyStore( NumKeys, &GlobalBsiKeys );
+
       // We want to perform the SAT here
-      /*int SatStatus = 1;
+      int SatStatus = 1;
       int MiterStatus = 1;
-      MiterStatus = ClapAttack_MakeMiterHeuristic(pNtkCone, &GlobalBsiKeys.pKeyCnf, &pNtkMiter);
+      GlobalBsiKeys.Updated = 0;
+      MiterStatus = ClapAttack_MakeMiterHeuristic(pNtkCone, GlobalBsiKeys.pKeyCnf, &pNtkMiter);
 
       // Did the miter generate successfully?
       if (!MiterStatus)
@@ -584,91 +585,95 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       {
         printf("Mitering for node %s failed.\n", Abc_ObjName(pNode));
         return 0;
-      }*/
-
-      // Loop over the miter generation phase until SAT fails
-      NumKeys = 0;
-      NumKnownKeys = 0;
-
-      Abc_NtkForEachPi(pNtkCone, pPi, j)
-      {
-        // Are we looking at a key input?
-        if (strstr(Abc_ObjName(pPi), "key"))
-        {
-            if (!ClapAttack_SetKnownKeys(pNtkCone, pPi, pGlobalBsiKeysTmp))
-            {
-                strcpy(KeyNameTmp[NumKeys], Abc_ObjName(pPi));
-                NumKeys++;
-            }
-            else
-            {
-                ppNodeFreeList[NumKnownKeys] = pPi;
-                NumKnownKeys++;
-            }
-        }
       }
-
-      // Delete known keys from cone.
-      if (NumKnownKeys) ClapAttack_DelKnownKeys(ppNodeFreeList, NumKnownKeys);
 
       // Status Prints
       printf("Evaluating node %s\n", Abc_ObjName(pNode));
-      printf("The number of keys is: %d\n", NumKeys);
+      printf("The number of keys (KIF): %d\n", pNode->KIF);
+      int nonKIFs = 0;
+      Abc_NtkForEachPi( pNtkCone, pPi, j )
+      {
+        if (!strstr(Abc_ObjName(pPi), "key"))
+        {
+          nonKIFs++;
+        }
+      }
+      j = 0;
+      printf("Number of non-key inputs: %d\n", nonKIFs);
+
+      for (int m = 0; m < Abc_NtkPiNum(pNtkMiter); m++)
+      {
+        printf("Input %d: %d\n", m, pNtkMiter->pModel[m]);
+      }
 
       // Malloc key values from SAT to infer from
-      KeyWithFreq = (int *)malloc(sizeof(int) * NumKeys);
-      KeyNoFreq = (int *)malloc(sizeof(int) * NumKeys);
+      /*KeyWithFreq = (int *)malloc(sizeof(int) * pNode->KIF);
+      KeyNoFreq = (int *)malloc(sizeof(int) * pNode->KIF);
 
-      ClapAttack_InterpretDiHeuristic(pNtkCone, pSatMiter->pMiter, pSatMiter->pModel, NumKeys, KeyWithFreq, KeyNoFreq,
-                                      &pDi);
+      // SEG FAULTS HERE (SOMETIMES)
+      ClapAttack_InterpretDiHeuristic(pNtkCone, pNtkMiter, pNtkMiter->pModel, pNode->KIF, KeyWithFreq, KeyNoFreq, &pDi);
 
       // Oracle testing. Comment out with real probe.
-      ClapAttack_OracleSetConeKeys(pNtkCone, pDi, pOracleKey);
+      //ClapAttack_OracleSetConeKeys(pNtkCone, pDi, pOracleKey);
 
       // Deducing the PIs for both cases:
-      
 
       // Malloc input arrays
-      pDi1 = (int *)malloc(sizeof(int) * Abc_NtkPiNum(pNtkMiter));
-      pDi2 = (int *)malloc(sizeof(int) * Abc_NtkPiNum(pNtkMiter));
+      pDi1 = (int *)malloc(sizeof(int) * Abc_NtkPiNum(pNtkCone));
+      pDi2 = (int *)malloc(sizeof(int) * Abc_NtkPiNum(pNtkCone));
 
       // Save off each input separtely
-      for (i = 0; i < Abc_NtkPiNum(pNtkMiter); i++)
+      for (j = 0; j < Abc_NtkPiNum(pNtkCone); j++)
       {
-        pDi1[i] = pDi[i];
-        pDi2[i] = pDi[i + Abc_NtkPiNum(pNtkMiter)];
-      }
-      i = 0;
+        pDi1[j] = pDi[j];
+        pDi2[j] = pDi[j + Abc_NtkPiNum(pNtkCone)];
+      }*/
 
+      /*
       // DEBUG: Print pattern 1 input
-      ClapAttack_PrintInp( pNtk, pDi1 );
+      //ClapAttack_PrintInp( pNtkCone, pDi1 );
+      for (j = 0; j < Abc_NtkPiNum(pNtkCone); j++)
+      {
+        printf("Input %d: %d\n", j, pDi1[j]);
+      }
+      j = 0;
 
       // DEBUG: Print pattern 2 input/output
-      ClapAttack_PrintInp( pNtk, pDi2 );
-
-      // We want to XOR the PIs here
-
-      // We want to correlate switching values to their respective PIs here
+      //ClapAttack_PrintInp( pNtkCone, pDi2 );
+      for (j = 0; j < Abc_NtkPiNum(pNtkCone); j++)
+      {
+        printf("Input %d: %d\n", j, pDi2[j]);
+      }
+      j = 0;
+      */
 
       //Loading up the PIs:
       vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins (Just in case)
       int addedFanins = 0;
       char *tempName;
-      Abc_NtkForEachPi( pNtkCone, pPi, j ) // Traverse all primary inputs to the node
+      Abc_NtkForEachPi( pNtkMiter, pPi, j ) // Traverse all primary inputs to the node
       {
-        if (!strstr(Abc_ObjName(pPi), "key")) // If the input is not a key
+        if(j < Abc_NtkPiNum(pNtkCone))
         {
-          Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
+          if (!strstr(Abc_ObjName(pPi), "key") && (pNtkMiter->pModel[j] != pNtkMiter->pModel[j+Abc_NtkPiNum(pNtkCone)])) // If the input is not a key and is sensitizing
           {
-            if (!strcmp(Abc_ObjName(pPiSource), Abc_ObjName(pPi))) // If the names match
+            printf("PI in Miter: %s\n", Abc_ObjName(pPi));
+            Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
             {
-              Vec_PtrSetEntry(vFanins, addedFanins, pPiSource);
-              tempName = Abc_ObjName(pPi);
-              addedFanins++;
+              if (strstr(Abc_ObjName(pPi), Abc_ObjName(pPiSource))) // If the names match
+              {
+                Vec_PtrSetEntry(vFanins, addedFanins, pPiSource);
+                tempName = Abc_ObjName(pPi);
+                addedFanins++;
+              }
             }
           }
         }
       }
+
+      // Print how many inputs we reduced
+      printf("Adjoining Gate input fanin reduced from %d to %d.\n", nonKIFs, addedFanins);
+
       // Check if the list of fanins is 1 (Add another non-key fanininput so that we don't have a one-input gate)
       if (addedFanins == 1)
       {
@@ -720,6 +725,10 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         newNodeInv->adjTag = 0; //We want the adjacency tags to stay at 0 so it doesn't show up in scan
       }
       printf("\nNode %s added.\n", Abc_ObjName( newNode ));
+      free(pDi1);
+      free(pDi2);
+      free(KeyWithFreq);
+      free(KeyNoFreq);
       return 1;
     }
   }
@@ -1165,10 +1174,25 @@ void ClapAttack_TraversalRecursiveHeuristic(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode
           if (!SatStatus)
           {
             //Print sensitizing pattern
-            /*printf("Leaky node %s: \n", Abc_ObjName(pNode));
-            for (int m = 0; m < Abc_NtkPiNum(pNtkMiter); m++)
+            /*if(!strcmp(Abc_ObjName(pNode),"n1011"))
             {
-              Abc_Print(1, "Input %d: %d\n", m, pNtkMiter->pModel[m]);
+              printf("Leaky node %s: \n", Abc_ObjName(pNode));
+              printf("The number of keys (KIF): %d\n", pNode->KIF);
+              int nonKIFs = 0;
+              j = 0;
+              Abc_NtkForEachPi( pNtkCone, pPi, j )
+              {
+                if (!strstr(Abc_ObjName(pPi), "key"))
+                {
+                  nonKIFs++;
+                }
+              }
+              j = 0;
+              printf("Number of non-key inputs: %d\n", nonKIFs);
+              for (int m = 0; m < Abc_NtkPiNum(pNtkMiter); m++)
+              {
+                Abc_Print(1, "Input %d: %d\n", m, pNtkMiter->pModel[m]);
+              }
             }*/
 
             // Update SAT node list with new Sat miter
