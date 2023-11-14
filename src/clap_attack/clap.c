@@ -545,12 +545,10 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
 // Adds a blank node to the network
 int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
 {
-  Abc_Ntk_t *pNtk, *pNtkCone, *pNtkMiter;
+  Abc_Ntk_t *pNtk, *pNtkCone;
   Abc_Obj_t *newNode, *newNodeInv, *pNode, *pPi, *pPiSource, *newPo;
   Vec_Ptr_t *vFanins;
-  struct BSI_KeyData_t GlobalBsiKeys;
-  int i=0, j=0, k=0, *KeyWithFreq, *KeyNoFreq, NumKeys;
-  int *pDi, *pDi1, *pDi2;
+  int i=0, j=0, k=0;
 
   printf("Add Node Function:\n");
   pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
@@ -566,101 +564,19 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
     {
       ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0); // Isolate the target node's fanin cone (single resolution)
 
-      NumKeys = ClapAttack_GetNumKeys( pNtkCone );
-      ClapAttack_InitKeyStore( NumKeys, &GlobalBsiKeys );
-
-      // We want to perform the SAT here
-      int SatStatus = 1;
-      int MiterStatus = 1;
-      GlobalBsiKeys.Updated = 0;
-      MiterStatus = ClapAttack_MakeMiterHeuristic(pNtkCone, GlobalBsiKeys.pKeyCnf, &pNtkMiter);
-
-      // Did the miter generate successfully?
-      if (!MiterStatus)
-      {
-        // Run SAT on the generated miter to find sensitizing inputs
-        SatStatus = ClapAttack_RunSat(pNtkMiter);
-      }
-      else
-      {
-        printf("Mitering for node %s failed.\n", Abc_ObjName(pNode));
-        return 0;
-      }
-
-      // Status Prints
-      printf("Evaluating node %s\n", Abc_ObjName(pNode));
-      printf("The number of keys (KIF): %d\n", pNode->KIF);
-      int nonKIFs = 0;
-      Abc_NtkForEachPi( pNtkCone, pPi, j )
-      {
-        if (!strstr(Abc_ObjName(pPi), "key"))
-        {
-          nonKIFs++;
-        }
-      }
-      j = 0;
-      printf("Number of non-key inputs: %d\n", nonKIFs);
-
-      for (int m = 0; m < Abc_NtkPiNum(pNtkMiter); m++)
-      {
-        printf("Input %d: %d\n", m, pNtkMiter->pModel[m]);
-      }
-
-      // Malloc key values from SAT to infer from
-      /*KeyWithFreq = (int *)malloc(sizeof(int) * pNode->KIF);
-      KeyNoFreq = (int *)malloc(sizeof(int) * pNode->KIF);
-
-      // SEG FAULTS HERE (SOMETIMES)
-      ClapAttack_InterpretDiHeuristic(pNtkCone, pNtkMiter, pNtkMiter->pModel, pNode->KIF, KeyWithFreq, KeyNoFreq, &pDi);
-
-      // Oracle testing. Comment out with real probe.
-      //ClapAttack_OracleSetConeKeys(pNtkCone, pDi, pOracleKey);
-
-      // Deducing the PIs for both cases:
-
-      // Malloc input arrays
-      pDi1 = (int *)malloc(sizeof(int) * Abc_NtkPiNum(pNtkCone));
-      pDi2 = (int *)malloc(sizeof(int) * Abc_NtkPiNum(pNtkCone));
-
-      // Save off each input separtely
-      for (j = 0; j < Abc_NtkPiNum(pNtkCone); j++)
-      {
-        pDi1[j] = pDi[j];
-        pDi2[j] = pDi[j + Abc_NtkPiNum(pNtkCone)];
-      }*/
-
-      /*
-      // DEBUG: Print pattern 1 input
-      //ClapAttack_PrintInp( pNtkCone, pDi1 );
-      for (j = 0; j < Abc_NtkPiNum(pNtkCone); j++)
-      {
-        printf("Input %d: %d\n", j, pDi1[j]);
-      }
-      j = 0;
-
-      // DEBUG: Print pattern 2 input/output
-      //ClapAttack_PrintInp( pNtkCone, pDi2 );
-      for (j = 0; j < Abc_NtkPiNum(pNtkCone); j++)
-      {
-        printf("Input %d: %d\n", j, pDi2[j]);
-      }
-      j = 0;
-      */
-
-      //Loading up the PIs:
+      //Loading in the PIs:
       vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins (Just in case)
       int addedFanins = 0;
       char *tempName;
-      Abc_NtkForEachPi( pNtkMiter, pPi, j ) // Traverse all primary inputs to the node
+      Abc_NtkForEachPi( pNtkCone, pPi, j ) // Traverse all primary inputs in the cone
       {
         if(j < Abc_NtkPiNum(pNtkCone))
         {
-          if (!strstr(Abc_ObjName(pPi), "key") && (pNtkMiter->pModel[j] != pNtkMiter->pModel[j+Abc_NtkPiNum(pNtkCone)])) // If the input is not a key and is sensitizing
+          if (!strstr(Abc_ObjName(pPi), "key")) // If the input is not a key
           {
-            printf("PI in Miter: %s\n", Abc_ObjName(pPi));
             Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
             {
-              if (strstr(Abc_ObjName(pPi), Abc_ObjName(pPiSource))) // If the names match
+              if (!strcmp(Abc_ObjName(pPi), Abc_ObjName(pPiSource))) // If the names match
               {
                 Vec_PtrSetEntry(vFanins, addedFanins, pPiSource);
                 tempName = Abc_ObjName(pPi);
@@ -671,16 +587,13 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         }
       }
 
-      // Print how many inputs we reduced
-      printf("Adjoining Gate input fanin reduced from %d to %d.\n", nonKIFs, addedFanins);
-
       // Check if the list of fanins is 1 (Add another non-key fanininput so that we don't have a one-input gate)
       if (addedFanins == 1)
       {
         int k = 0;
         Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
         {
-          if (!strstr(Abc_ObjName(pPiSource), "key") && strcmp(Abc_ObjName(pPiSource), tempName) != 0) // If the input is not a key and not the same input as earlier
+          if (!strstr(Abc_ObjName(pPiSource), "key") && (strcmp(Abc_ObjName(pPiSource), tempName) != 0)) // If the input is not a key and not the same input as earlier
           {
             Vec_PtrSetEntry(vFanins, 1, pPiSource);
             printf("Found a node with fanin 1 and added an extra input.");
@@ -693,7 +606,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       {
         newNode = Abc_NtkCreateNodeOr( pNtk, vFanins);
       }
-      else if(gateType == 2) //Will create a NAND
+      else if(gateType == 2) //Will create a NAND (default)
       {
         newNode = Abc_NtkCreateNodeAnd( pNtk, vFanins);
       }
@@ -725,10 +638,6 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         newNodeInv->adjTag = 0; //We want the adjacency tags to stay at 0 so it doesn't show up in scan
       }
       printf("\nNode %s added.\n", Abc_ObjName( newNode ));
-      free(pDi1);
-      free(pDi2);
-      free(KeyWithFreq);
-      free(KeyNoFreq);
       return 1;
     }
   }

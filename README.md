@@ -88,12 +88,16 @@ All benchmarks from the ICCAD'22 manuscript can be found in the `probing_benchma
 
 b14:
 read_bench ./probing_benchmarks/b14/SLL/b14_SLL.bench
+
 16-bit SEC/DED Circuit:
 read_bench ./probing_benchmarks/c1908/SLL/c1908_SLL.bench
+
 c5315 (9-Bit ALU):
 read_bench ./probing_benchmarks/c5315/SLL/c5315_SLL.bench
+
 des:
 read_bench ./probing_benchmarks/des/SLL/des_SLL.bench
+
 
 ## Troubleshooting:
 
