@@ -565,7 +565,7 @@ int AdjoiningGate_Run_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
 
   if (gate == NULL)
   {
-    fprintf( pAbc->Out, "No gate type specified. Proceeding with default (NAND).\n" );
+    //fprintf( pAbc->Out, "No gate type specified. Proceeding with default (NAND).\n" );
   }
   else
   {

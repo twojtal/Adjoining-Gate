@@ -13,6 +13,7 @@
 #include "base/main/main.h"
 #include "proof/fraig/fraig.h"
 #include "map/mio/mio.h" //Added for gate type determination
+#include <time.h> // For timing results
 
 struct BSI_KeyData_t {
     int NumKeys;
@@ -35,7 +36,7 @@ struct SatMiterList {
 
 int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder);
 int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder);
-int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping );
+int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping , float scanTime);
 int AdjoiningGate_BFS(Abc_Frame_t *pAbc, int group_size);
 int AdjoiningGate_AddNode(Abc_Frame_t *pAbc, char *targetNode, int gateType);
 int AdjoiningGate_RemoveNode(Abc_Frame_t *pAbc, char *delNode);
@@ -119,6 +120,12 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
   struct SatMiterList *pSatMiterList = NULL;
   struct SatMiterList *pSatMiterListNew = NULL;
   struct SatMiterList *pSatMiterListCur = NULL;
+
+  // Variables for time measurement
+  clock_t start_time, end_time;
+  double cpu_time_used;
+
+  start_time = clock();
 
   //
   // Convert Key to proper format string
@@ -330,11 +337,14 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
 
   // We are done -- cleanup and exit
   free( GlobalBsiKeys.KeyValue );
+
+  end_time = clock();
+  cpu_time_used = ((double) (end_time - start_time)) / CLOCKS_PER_SEC;
   
-  return AdjoiningGate_ListNetwork(pAbc, listAdjOrder); // List the network
+  return AdjoiningGate_ListNetwork(pAbc, listAdjOrder, cpu_time_used); // List the network
 }
 
-int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping )
+int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping , float scanTime)
 {
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
@@ -498,9 +508,25 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping )
       TotalNumNodes++;
     }
   }
-  printf("\nNodes visited: %d\n", NodesVisited);
-  printf("Nodes leaking key information: %d\n", NodesLeaking);
+  Abc_Obj_t *obj;
+  int PIctr = 0, POctr = 0;
+  i = 0;
+  Abc_NtkForEachPi(pNtk, obj, i)
+  {
+    PIctr++;
+  }
+  i = 0;
+  Abc_NtkForEachPo(pNtk, obj, i)
+  {
+    POctr++;
+  }
+  printf("\nScan Time: %f\n", scanTime);
+  printf("PIs: %d\n", PIctr);
+  printf("POs: %d\n", POctr);
   printf("Total nodes in circuit: %d\n", TotalNumNodes);
+  printf("Nodes visited: %d\n", NodesVisited);
+  printf("Nodes leaking key information: %d\n", NodesLeaking);
+  
   return 1;
 }
 
@@ -550,7 +576,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
   Vec_Ptr_t *vFanins;
   int i=0, j=0, k=0;
 
-  printf("Add Node Function:\n");
+  //printf("Add Node Function:\n");
   pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
   if(pNtk == NULL)
   {
@@ -596,7 +622,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           if (!strstr(Abc_ObjName(pPiSource), "key") && (strcmp(Abc_ObjName(pPiSource), tempName) != 0)) // If the input is not a key and not the same input as earlier
           {
             Vec_PtrSetEntry(vFanins, 1, pPiSource);
-            printf("Found a node with fanin 1 and added an extra input.");
+            //printf("Found a node with fanin 1 and added an extra input.");
             break;
           }
         }
@@ -637,7 +663,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         newNode->adjTag = pNode->adjTag; //Add new node to the adjacency group, "orphaning" the non-target nodes
         newNodeInv->adjTag = 0; //We want the adjacency tags to stay at 0 so it doesn't show up in scan
       }
-      printf("\nNode %s added.\n", Abc_ObjName( newNode ));
+      //printf("\nNode %s added.\n", Abc_ObjName( newNode ));
       return 1;
     }
   }
@@ -715,7 +741,13 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
   Abc_Obj_t *pNode;
   int i = 0, nodeCtr = 0;
 
-  printf("\nAdjoining Gate Run Function:\n");
+  // Variables for timing
+  clock_t start_time, end_time;
+  double cpu_time_used;
+
+  start_time = clock();
+
+  //printf("\nAdjoining Gate Run Function:\n");
   pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
   if(pNtk == NULL)
   {
@@ -730,7 +762,25 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
       nodeCtr++;
     }
   }
-  printf("Added adjoining gates to %d nodes\n",nodeCtr);
+  end_time = clock();
+  cpu_time_used = ((double) (end_time - start_time)) / CLOCKS_PER_SEC;
+  Abc_Obj_t *obj;
+  int PIctr = 0, POctr = 0;
+  i = 0;
+  Abc_NtkForEachPi(pNtk, obj, i)
+  {
+    PIctr++;
+  }
+  i = 0;
+  Abc_NtkForEachPo(pNtk, obj, i)
+  {
+    POctr++;
+  }
+  printf("\nAdded adjoining gates to %d nodes\n",nodeCtr);
+  printf("Adjoining Gate Add Runtime: %f\n", cpu_time_used);
+  printf("Final PIs: %d\n", PIctr);
+  printf("Final POs: %d\n", POctr);
+  
   return 1;
 }
 

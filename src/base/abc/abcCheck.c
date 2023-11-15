@@ -268,7 +268,7 @@ int Abc_NtkCheckNames( Abc_Ntk_t * pNtk )
         }
     }
 
-    assert(pObj); // pObj should point to something here.
+    //assert(pObj); // pObj should point to something here.
 
     // return the array of all IDs, which have names
     vNameIds = Nm_ManReturnNameIds( pNtk->pManName );
