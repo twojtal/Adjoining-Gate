@@ -9,9 +9,6 @@ Benchmark Path,Scan Time (seconds),PIs,POs,Total Nodes,Nodes Visited,Nodes Leaki
 ./probing_benchmarks/b14/Full-Lock/b14_alg1.bench,27.421875,757,245,12164,1402,372,372,0.140625,757,617
 ./probing_benchmarks/b14/Full-Lock/b14_alg2.bench,27.515625,757,245,12164,1402,372,372,0.140625,757,617
 ./probing_benchmarks/b14/Full-Lock/b14_locked_40_40_gate_level_final.v.bench,16.625,817,245,9715,611,358,358,0.1875,817,603
-./probing_benchmarks/b14/SLL/alg1_2gateres.bench,3.234375,278,245,7590,0,0,0,0,278,245
-./probing_benchmarks/b14/SLL/alg1_post.bench,3.234375,278,245,7590,0,0,0,0,278,245
-./probing_benchmarks/b14/SLL/alg2_2gateres.bench,3.203125,278,245,7590,0,0,0,0,278,245
 ./probing_benchmarks/b14/SLL/alg2_post.bench,3.265625,280,245,7590,2,1,1,0,280,246
 ./probing_benchmarks/b14/SLL/b14_SLL.bench,4.015625,533,245,7395,247,122,122,0.0625,533,367
 ./probing_benchmarks/c1908/AntiSAT/alg1_2gateres.bench,1.171875,78,25,1022,337,77,77,0,78,102

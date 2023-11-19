@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Set default values for input and output file paths
-input_file="output.txt"
-output_file="results.csv"
+input_file="outputG5.txt"
+output_file="resultsG5.csv"
 
 # Use awk to filter and extract specific results with headers
 awk -F ': ' '/^Scanned/ {benchmark_path = $1; scanned_found = 1; next}
