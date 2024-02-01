@@ -607,7 +607,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       }
 
       // Malloc key values from SAT to infer from
-      /*KeyWithFreq = (int *)malloc(sizeof(int) * pNode->KIF);
+      KeyWithFreq = (int *)malloc(sizeof(int) * pNode->KIF);
       KeyNoFreq = (int *)malloc(sizeof(int) * pNode->KIF);
 
       // SEG FAULTS HERE (SOMETIMES)
@@ -627,16 +627,14 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       {
         pDi1[j] = pDi[j];
         pDi2[j] = pDi[j + Abc_NtkPiNum(pNtkCone)];
-      }*/
+      }
 
-      /*
       // DEBUG: Print pattern 1 input
       //ClapAttack_PrintInp( pNtkCone, pDi1 );
       for (j = 0; j < Abc_NtkPiNum(pNtkCone); j++)
       {
         printf("Input %d: %d\n", j, pDi1[j]);
       }
-      j = 0;
 
       // DEBUG: Print pattern 2 input/output
       //ClapAttack_PrintInp( pNtkCone, pDi2 );
@@ -644,28 +642,23 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       {
         printf("Input %d: %d\n", j, pDi2[j]);
       }
-      j = 0;
-      */
 
       //Loading up the PIs:
       vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins (Just in case)
       int addedFanins = 0;
       char *tempName;
-      Abc_NtkForEachPi( pNtkMiter, pPi, j ) // Traverse all primary inputs to the node
+      Abc_NtkForEachPi( pNtkCone, pPi, j ) // Traverse all PIs to the node
       {
-        if(j < Abc_NtkPiNum(pNtkCone))
+        if ((!strstr(Abc_ObjName(pPi), "key")) && (pDi1[j] != pDi2[j])) // If the input is not a key and is sensitizing
         {
-          if (!strstr(Abc_ObjName(pPi), "key") && (pNtkMiter->pModel[j] != pNtkMiter->pModel[j+Abc_NtkPiNum(pNtkCone)])) // If the input is not a key and is sensitizing
+          printf("PI in Miter: %s\n", Abc_ObjName(pPi));
+          Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
           {
-            printf("PI in Miter: %s\n", Abc_ObjName(pPi));
-            Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
+            if (!strcmp(Abc_ObjName(pPi), Abc_ObjName(pPiSource))) // If the names match, add the PI to the adjoining gate's fanin
             {
-              if (strstr(Abc_ObjName(pPi), Abc_ObjName(pPiSource))) // If the names match
-              {
-                Vec_PtrSetEntry(vFanins, addedFanins, pPiSource);
-                tempName = Abc_ObjName(pPi);
-                addedFanins++;
-              }
+              Vec_PtrSetEntry(vFanins, addedFanins, pPiSource);
+              tempName = Abc_ObjName(pPi);
+              addedFanins++;
             }
           }
         }
