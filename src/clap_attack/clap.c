@@ -601,16 +601,16 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       j = 0;
       printf("Number of non-key inputs: %d\n", nonKIFs);
 
-      for (int m = 0; m < Abc_NtkPiNum(pNtkMiter); m++)
+      /*for (int m = 0; m < Abc_NtkPiNum(pNtkMiter); m++)
       {
         printf("Input %d: %d\n", m, pNtkMiter->pModel[m]);
-      }
+      }*/
 
       // Malloc key values from SAT to infer from
       KeyWithFreq = (int *)malloc(sizeof(int) * pNode->KIF);
       KeyNoFreq = (int *)malloc(sizeof(int) * pNode->KIF);
 
-      // SEG FAULTS HERE (SOMETIMES)
+      // SEG FAULTS HERE (SOMETIMES) - Perhaps due to underscore characters?
       ClapAttack_InterpretDiHeuristic(pNtkCone, pNtkMiter, pNtkMiter->pModel, pNode->KIF, KeyWithFreq, KeyNoFreq, &pDi);
 
       // Oracle testing. Comment out with real probe.
@@ -2222,158 +2222,158 @@ int ClapAttack_RunSat(Abc_Ntk_t *pNtk) {
 // Determine which key value leads to presence/absence of an EOFM probe frequency component.
 // This is later used to infer the key value based on the presence/absence of frequency component.
 // I.e. to infer the key value.
-void ClapAttack_InterpretDiHeuristic(Abc_Ntk_t *pNtk, Abc_Ntk_t *pNtkMiter, int *pModel, int NumKeys, int *KeyWithFreq,
-                                     int *KeyNoFreq, int **ppDiFull) {
-    int i, j, idx1, idx2, KeyIndex;
-    Abc_Obj_t *pPi, *pPiTmp, *pPo;
-    int *pInp1, *pInp2, *pDi1, *pDi2, *pKey1, *pKey2, *pDiFull;
+void ClapAttack_InterpretDiHeuristic(Abc_Ntk_t *pNtk, Abc_Ntk_t *pNtkMiter, int *pModel, int NumKeys, int *KeyWithFreq, int *KeyNoFreq, int **ppDiFull)
+{
+  int i, j, idx1, idx2, KeyIndex;
+  Abc_Obj_t *pPi, *pPiTmp, *pPo;
+  int *pInp1, *pInp2, *pDi1, *pDi2, *pKey1, *pKey2, *pDiFull;
 
-    pInp1 = (int *)malloc(sizeof(int) * (Abc_NtkPiNum(pNtk) * 2));
-    pInp2 = (int *)malloc(sizeof(int) * (Abc_NtkPiNum(pNtk) * 2));
-    pDi1 = (int *)malloc(sizeof(int) * Abc_NtkPiNum(pNtk));
-    pDi2 = (int *)malloc(sizeof(int) * Abc_NtkPiNum(pNtk));
-    pKey1 = (int *)malloc(sizeof(int) * NumKeys);
-    pKey2 = (int *)malloc(sizeof(int) * NumKeys);
-    pDiFull = (int *)malloc(sizeof(int) * (Abc_NtkPiNum(pNtk) * 2));
-    *ppDiFull = pDiFull;
+  pInp1 = (int *)malloc(sizeof(int) * (Abc_NtkPiNum(pNtk) * 2));
+  pInp2 = (int *)malloc(sizeof(int) * (Abc_NtkPiNum(pNtk) * 2));
+  pDi1 = (int *)malloc(sizeof(int) * Abc_NtkPiNum(pNtk));
+  pDi2 = (int *)malloc(sizeof(int) * Abc_NtkPiNum(pNtk));
+  pKey1 = (int *)malloc(sizeof(int) * NumKeys);
+  pKey2 = (int *)malloc(sizeof(int) * NumKeys);
+  pDiFull = (int *)malloc(sizeof(int) * (Abc_NtkPiNum(pNtk) * 2));
+  *ppDiFull = pDiFull;
 
-    // Init.
-    idx1 = 0;
-    idx2 = Abc_NtkPiNum(pNtk);
+  // Init.
+  idx1 = 0;
+  idx2 = Abc_NtkPiNum(pNtk);
 
-    // Organize larger miter model into shorter cone model for oracle
-    Abc_NtkForEachPi(pNtk, pPi, i) {
-        Abc_NtkForEachPi(pNtkMiter, pPiTmp, j) {
-            // Check if PI names match. If so, save off the model value
-            if (strstr(Abc_ObjName(pPiTmp), Abc_ObjName(pPi)) &&
-                (strlen(Abc_ObjName(pPiTmp)) == (strlen(Abc_ObjName(pPi)) + 2))) {
-                // Part of first DI
-                if (strstr(Abc_ObjName(pPiTmp), "_1")) {
-                    pDiFull[idx1] = pModel[j];
-                    idx1++;
-                }
+  // Organize larger miter model into shorter cone model for oracle
+  Abc_NtkForEachPi(pNtk, pPi, i) {
+      Abc_NtkForEachPi(pNtkMiter, pPiTmp, j) {
+          // Check if PI names match. If so, save off the model value
+          if (strstr(Abc_ObjName(pPiTmp), Abc_ObjName(pPi)) &&
+              (strlen(Abc_ObjName(pPiTmp)) == (strlen(Abc_ObjName(pPi)) + 2))) {
+              // Part of first DI
+              if (strstr(Abc_ObjName(pPiTmp), "_1")) {
+                  pDiFull[idx1] = pModel[j];
+                  idx1++;
+              }
 
-                // Part of second DI
-                if (strstr(Abc_ObjName(pPiTmp), "_2")) {
-                    pDiFull[idx2] = pModel[j];
-                    idx2++;
-                }
-            }
-        }
-    }
+              // Part of second DI
+              if (strstr(Abc_ObjName(pPiTmp), "_2")) {
+                  pDiFull[idx2] = pModel[j];
+                  idx2++;
+              }
+          }
+      }
+  }
 
-    for (i = 0; i < (Abc_NtkPiNum(pNtk) * 2); i++) {
-        pInp1[i] = pDiFull[i];
-        pInp2[i] = pDiFull[i];
-    }
+  for (i = 0; i < (Abc_NtkPiNum(pNtk) * 2); i++) {
+      pInp1[i] = pDiFull[i];
+      pInp2[i] = pDiFull[i];
+  }
 
-    // Assign key->0
+  // Assign key->0
 
-    // Goal: Iterate through each PI. Identify list of keys.
-    KeyIndex = 0;
-    Abc_NtkForEachPi(pNtk, pPi, i) {
-        // Are we looking at a key input?
-        if (strstr(Abc_ObjName(pPi), "key")) {
-            pInp1[i] = pInp1[i + Abc_NtkPiNum(pNtk)];
-            // pInp1[i+Abc_NtkPiNum(pNtk)] = 0;
-            // pInp2[i] = 1;
-            pInp2[i + Abc_NtkPiNum(pNtk)] = pInp2[i];
-            // Abc_Print(1, "match!: %d=%s %d %d\n", i, Abc_ObjName(pPi), pInp[i], pOracleKey[keyindex] );
+  // Goal: Iterate through each PI. Identify list of keys.
+  KeyIndex = 0;
+  Abc_NtkForEachPi(pNtk, pPi, i) {
+      // Are we looking at a key input?
+      if (strstr(Abc_ObjName(pPi), "key")) {
+          pInp1[i] = pInp1[i + Abc_NtkPiNum(pNtk)];
+          // pInp1[i+Abc_NtkPiNum(pNtk)] = 0;
+          // pInp2[i] = 1;
+          pInp2[i + Abc_NtkPiNum(pNtk)] = pInp2[i];
+          // Abc_Print(1, "match!: %d=%s %d %d\n", i, Abc_ObjName(pPi), pInp[i], pOracleKey[keyindex] );
 
-            // Save off each key value to return
-            pKey1[KeyIndex] = pInp1[i];
-            pKey2[KeyIndex] = pInp2[i];
-            KeyIndex++;
-        }
-    }
+          // Save off each key value to return
+          pKey1[KeyIndex] = pInp1[i];
+          pKey2[KeyIndex] = pInp2[i];
+          KeyIndex++;
+      }
+  }
 
-    // Save off each input separtely
-    for (i = 0; i < Abc_NtkPiNum(pNtk); i++) {
-        pDi1[i] = pInp1[i];
-        pDi2[i] = pInp1[i + Abc_NtkPiNum(pNtk)];
-    }
+  // Save off each input separtely
+  for (i = 0; i < Abc_NtkPiNum(pNtk); i++) {
+      pDi1[i] = pInp1[i];
+      pDi2[i] = pInp1[i + Abc_NtkPiNum(pNtk)];
+  }
 
-    // Simulate Pattern 1
-    int *pSimInfo1 = Abc_NtkVerifySimulatePattern(pNtk, pDi1);
+  // Simulate Pattern 1
+  int *pSimInfo1 = Abc_NtkVerifySimulatePattern(pNtk, pDi1);
 
-    // Simulate Pattern 2
-    int *pSimInfo2 = Abc_NtkVerifySimulatePattern(pNtk, pDi2);
+  // Simulate Pattern 2
+  int *pSimInfo2 = Abc_NtkVerifySimulatePattern(pNtk, pDi2);
 
-    // Print pattern 2 input/output
-    // ClapAttack_PrintInp( pNtk, pDi1 );
-    // ClapAttack_PrintOut( pNtk, pSimInfo1 );
-    // ClapAttack_PrintInp( pNtk, pDi2 );
-    // ClapAttack_PrintOut( pNtk, pSimInfo2 );
+  // Print pattern 2 input/output
+  // ClapAttack_PrintInp( pNtk, pDi1 );
+  // ClapAttack_PrintOut( pNtk, pSimInfo1 );
+  // ClapAttack_PrintInp( pNtk, pDi2 );
+  // ClapAttack_PrintOut( pNtk, pSimInfo2 );
 
-    Abc_NtkForEachPo(pNtk, pPo, i) {
-        if (pSimInfo1[i] - pSimInfo2[i]) {
-            printf("Interpret: We had a frequency component for key=0!\n");
-            for (KeyIndex = 0; KeyIndex < NumKeys; KeyIndex++) {
-                KeyWithFreq[KeyIndex] = pKey1[KeyIndex];
-                KeyNoFreq[KeyIndex] = pKey2[KeyIndex];
-            }
-        }
-    }
+  Abc_NtkForEachPo(pNtk, pPo, i) {
+      if (pSimInfo1[i] - pSimInfo2[i]) {
+          printf("Interpret: We had a frequency component for key=0!\n");
+          for (KeyIndex = 0; KeyIndex < NumKeys; KeyIndex++) {
+              KeyWithFreq[KeyIndex] = pKey1[KeyIndex];
+              KeyNoFreq[KeyIndex] = pKey2[KeyIndex];
+          }
+      }
+  }
 
-    ABC_FREE(pSimInfo1);
-    ABC_FREE(pSimInfo2);
+  ABC_FREE(pSimInfo1);
+  ABC_FREE(pSimInfo2);
 
-    // Test for Key -> 1
-    // Save off each input separtely
-    for (i = 0; i < Abc_NtkPiNum(pNtk); i++) {
-        pDi1[i] = pInp2[i];
-        pDi2[i] = pInp2[i + Abc_NtkPiNum(pNtk)];
-    }
+  // Test for Key -> 1
+  // Save off each input separtely
+  for (i = 0; i < Abc_NtkPiNum(pNtk); i++) {
+      pDi1[i] = pInp2[i];
+      pDi2[i] = pInp2[i + Abc_NtkPiNum(pNtk)];
+  }
 
-    // Simulate Pattern 1
-    pSimInfo1 = Abc_NtkVerifySimulatePattern(pNtk, pDi1);
+  // Simulate Pattern 1
+  pSimInfo1 = Abc_NtkVerifySimulatePattern(pNtk, pDi1);
 
-    // Simulate Pattern 2
-    pSimInfo2 = Abc_NtkVerifySimulatePattern(pNtk, pDi2);
+  // Simulate Pattern 2
+  pSimInfo2 = Abc_NtkVerifySimulatePattern(pNtk, pDi2);
 
-    // Print pattern 2 input/output
-    // ClapAttack_PrintInp( pNtk, pDi1 );
-    // ClapAttack_PrintOut( pNtk, pSimInfo1 );
-    // ClapAttack_PrintInp( pNtk, pDi2 );
-    // ClapAttack_PrintOut( pNtk, pSimInfo2 );
+  // Print pattern 2 input/output
+  // ClapAttack_PrintInp( pNtk, pDi1 );
+  // ClapAttack_PrintOut( pNtk, pSimInfo1 );
+  // ClapAttack_PrintInp( pNtk, pDi2 );
+  // ClapAttack_PrintOut( pNtk, pSimInfo2 );
 
-    Abc_NtkForEachPo(pNtk, pPo, i) {
-        if (pSimInfo1[i] - pSimInfo2[i]) {
-            printf("Interpret: We had a frequency component for key=1!\n");
-            for (KeyIndex = 0; KeyIndex < NumKeys; KeyIndex++) {
-                KeyWithFreq[KeyIndex] = pKey2[KeyIndex];
-                KeyNoFreq[KeyIndex] = pKey1[KeyIndex];
-            }
-        }
-    }
+  Abc_NtkForEachPo(pNtk, pPo, i) {
+      if (pSimInfo1[i] - pSimInfo2[i]) {
+          printf("Interpret: We had a frequency component for key=1!\n");
+          for (KeyIndex = 0; KeyIndex < NumKeys; KeyIndex++) {
+              KeyWithFreq[KeyIndex] = pKey2[KeyIndex];
+              KeyNoFreq[KeyIndex] = pKey1[KeyIndex];
+          }
+      }
+  }
 
-    ABC_FREE(pSimInfo1);
-    ABC_FREE(pSimInfo2);
-    free(pDi1);
-    free(pDi2);
-    free(pInp1);
-    free(pInp2);
-    free(pKey1);
-    free(pKey2);
+  ABC_FREE(pSimInfo1);
+  ABC_FREE(pSimInfo2);
+  free(pDi1);
+  free(pDi2);
+  free(pInp1);
+  free(pInp2);
+  free(pKey1);
+  free(pKey2);
 }
 
 // Infer key from simulated information in circuit. Essentially, do we have a
 // frequency component?
 int ClapAttack_OracleInferKey(Abc_Ntk_t *pNtk, int *pSimInfo1, int *pSimInfo2) {
-    int i, fKeyFreq;
-    Abc_Obj_t *pPo;
+  int i, fKeyFreq;
+  Abc_Obj_t *pPo;
 
-    // Initialize key to no frequency component value. If we see a frequency component...
-    // Flip it!
-    fKeyFreq = 0;
-    Abc_NtkForEachPo(pNtk, pPo, i) {
-        if (pSimInfo1[i] - pSimInfo2[i]) {
-            printf("Oracle: We observed a frequency component in our probe!\n");
-            fKeyFreq = 1;
-        }
-    }
+  // Initialize key to no frequency component value. If we see a frequency component...
+  // Flip it!
+  fKeyFreq = 0;
+  Abc_NtkForEachPo(pNtk, pPo, i) {
+      if (pSimInfo1[i] - pSimInfo2[i]) {
+          printf("Oracle: We observed a frequency component in our probe!\n");
+          fKeyFreq = 1;
+      }
+  }
 
-    return fKeyFreq;
+  return fKeyFreq;
 }
 
 // Simulate the oracle circuit with the known key applied with our DI. This simulates the EOFM probing that occurs
