@@ -545,12 +545,15 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
 // Adds a blank node to the network
 int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
 {
-  Abc_Ntk_t *pNtk, *pNtkCone, *pNtkMiter;
+  Abc_Ntk_t *pNtk, *pNtkCone, *pNtkConeTemp, *pNtkMiter;
   Abc_Obj_t *newNode, *newNodeInv, *pNode, *pPi, *pPiSource, *newPo;
   Vec_Ptr_t *vFanins;
   struct BSI_KeyData_t GlobalBsiKeys;
-  int i=0, j=0, k=0, *KeyWithFreq, *KeyNoFreq, NumKeys;
-  int *pDi, *pDi1, *pDi2;
+  int ctr = 0, i=0, j=0, k=0, NumKeys; // *KeyWithFreq, *KeyNoFreq, 
+  int SatStatus = 1, MiterStatus = 1; 
+  //int *pDi, *pDi1, *pDi2;
+  int addedFanins = 0;
+  char *tempName;
 
   printf("Add Node Function:\n");
   pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
@@ -565,27 +568,12 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
     if(!strcmp(Abc_ObjName( pNode ), targetNode)) // If this is the target node
     {
       ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0); // Isolate the target node's fanin cone (single resolution)
+      ClapAttack_IsolateCone(pNtk, &pNtkConeTemp, pNode, 1, 0);
+
+      int conArr[Abc_NtkPiNum(pNtkCone)];
 
       NumKeys = ClapAttack_GetNumKeys( pNtkCone );
       ClapAttack_InitKeyStore( NumKeys, &GlobalBsiKeys );
-
-      // We want to perform the SAT here
-      int SatStatus = 1;
-      int MiterStatus = 1;
-      GlobalBsiKeys.Updated = 0;
-      MiterStatus = ClapAttack_MakeMiterHeuristic(pNtkCone, GlobalBsiKeys.pKeyCnf, &pNtkMiter);
-
-      // Did the miter generate successfully?
-      if (!MiterStatus)
-      {
-        // Run SAT on the generated miter to find sensitizing inputs
-        SatStatus = ClapAttack_RunSat(pNtkMiter);
-      }
-      else
-      {
-        printf("Mitering for node %s failed.\n", Abc_ObjName(pNode));
-        return 0;
-      }
 
       // Status Prints
       printf("Evaluating node %s\n", Abc_ObjName(pNode));
@@ -598,58 +586,119 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           nonKIFs++;
         }
       }
-      j = 0;
       printf("Number of non-key inputs: %d\n", nonKIFs);
 
-      /*for (int m = 0; m < Abc_NtkPiNum(pNtkMiter); m++)
+      // Initializing Consideration Array:
+      for(j = 0; j<Abc_NtkPiNum(pNtkCone); j++)
       {
-        printf("Input %d: %d\n", m, pNtkMiter->pModel[m]);
-      }*/
-
-      // Malloc key values from SAT to infer from
-      KeyWithFreq = (int *)malloc(sizeof(int) * pNode->KIF);
-      KeyNoFreq = (int *)malloc(sizeof(int) * pNode->KIF);
-
-      // SEG FAULTS HERE (SOMETIMES) - Perhaps due to underscore characters?
-      ClapAttack_InterpretDiHeuristic(pNtkCone, pNtkMiter, pNtkMiter->pModel, pNode->KIF, KeyWithFreq, KeyNoFreq, &pDi);
-
-      // Oracle testing. Comment out with real probe.
-      //ClapAttack_OracleSetConeKeys(pNtkCone, pDi, pOracleKey);
-
-      // Deducing the PIs for both cases:
-
-      // Malloc input arrays
-      pDi1 = (int *)malloc(sizeof(int) * Abc_NtkPiNum(pNtkCone));
-      pDi2 = (int *)malloc(sizeof(int) * Abc_NtkPiNum(pNtkCone));
-
-      // Save off each input separtely
-      for (j = 0; j < Abc_NtkPiNum(pNtkCone); j++)
-      {
-        pDi1[j] = pDi[j];
-        pDi2[j] = pDi[j + Abc_NtkPiNum(pNtkCone)];
+        conArr[j] = j;
       }
 
-      // DEBUG: Print pattern 1 input
-      //ClapAttack_PrintInp( pNtkCone, pDi1 );
-      for (j = 0; j < Abc_NtkPiNum(pNtkCone); j++)
+      while(1) //Loop for iterating SAT solver
       {
-        printf("Input %d: %d\n", j, pDi1[j]);
-      }
+        SatStatus = 1;
+        MiterStatus = 1;
+        GlobalBsiKeys.Updated = 0;
+        MiterStatus = ClapAttack_MakeMiterHeuristic(pNtkConeTemp, GlobalBsiKeys.pKeyCnf, &pNtkMiter);
 
-      // DEBUG: Print pattern 2 input/output
-      //ClapAttack_PrintInp( pNtkCone, pDi2 );
-      for (j = 0; j < Abc_NtkPiNum(pNtkCone); j++)
-      {
-        printf("Input %d: %d\n", j, pDi2[j]);
-      }
+        // Did the miter generate successfully?
+        if (!MiterStatus)
+        {
+          // Run SAT on the generated miter to find sensitizing inputs
+          SatStatus = ClapAttack_RunSat(pNtkMiter);
+        }
+        else
+        {
+          printf("Mitering for node %s failed.\n", Abc_ObjName(pNode));
+          return 0;
+        }
 
+        /*for (int m = 0; m < Abc_NtkPiNum(pNtkMiter); m++)
+        {
+          printf("Input %d: %d\n", m, pNtkMiter->pModel[m]);
+        }*/
+
+        // Variables used within loop:
+        //KeyWithFreq = (int *)malloc(sizeof(int) * pNode->KIF); // Malloc key values from SAT to infer from
+        //KeyNoFreq = (int *)malloc(sizeof(int) * pNode->KIF); // Malloc key values from SAT to infer from
+
+        // SEG FAULTS HERE (SOMETIMES) - Perhaps due to underscore characters?
+        //ClapAttack_InterpretDiHeuristic(pNtkCone, pNtkMiter, pNtkMiter->pModel, pNode->KIF, KeyWithFreq, KeyNoFreq, &pDi);
+
+        // Oracle testing. Comment out with real probe.
+        //ClapAttack_OracleSetConeKeys(pNtkCone, pDi, pOracleKey);
+
+        int halfMiterPINum = Abc_NtkPiNum(pNtkMiter)/2; // Number of PIs in half of the miter (number of PIs currently considered)
+
+        // Deducing the PIs for both cases:
+        int pDi1[halfMiterPINum];
+        int pDi2[halfMiterPINum];
+        for (j = 0; j < halfMiterPINum; j++)
+        {
+          pDi1[j] = pNtkMiter->pModel[j];
+          pDi2[j] = pNtkMiter->pModel[j + halfMiterPINum];
+        }
+
+        // DEBUG: Print pattern 1 input
+        //ClapAttack_PrintInp( pNtkCone, pDi1 );
+        for (j = 0; j < halfMiterPINum; j++)
+        {
+          printf("Input %d: %d\n", j, pDi1[j]);
+        }
+
+        // DEBUG: Print pattern 2 input/output
+        //ClapAttack_PrintInp( pNtkCone, pDi2 );
+        for (j = 0; j < halfMiterPINum; j++)
+        {
+          printf("Input %d: %d\n", j, pDi2[j]);
+        }
+        // Updating Consideration Array:
+        ctr = 0;
+        for (j = 0; j < halfMiterPINum; j++) // Setting removed PIs to -1
+        {
+          if(pDi1[j] != pDi2[j])
+          {
+            for(k = 0; k < Abc_NtkPiNum(pNtkCone); k++) // Find the corresponding index in the conArr
+            {
+              if(conArr[k] == j)
+              {
+                conArr[k] = -1;
+                ctr++;
+              }
+            }
+          }
+        }
+        if(ctr == 0) // If the network is unSAT (no counter-example found), finish
+        {
+          break;
+        }
+        ctr = 0;
+        for (j = 0; j < Abc_NtkPiNum(pNtkCone); j++) // Reorganize the indices in the consideration array
+        {
+          if(conArr[j] != -1)
+          {
+            conArr[j] = ctr;
+            ctr++;
+          }
+        }
+
+        // Removing non-considered inputs from the temporary cone:
+        Abc_NtkForEachPi( pNtkConeTemp, pPi, j )
+        {
+          if(pDi1[j] != pDi2[j])
+          {
+            Abc_ObjReplaceByConstant(pPi, pDi2[j]);
+            Abc_NtkDeleteObj(pPi);
+          }
+        }
+        Abc_NtkDelete(pNtkMiter); // Reset the miter
+      }
+      
       //Loading up the PIs:
       vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins (Just in case)
-      int addedFanins = 0;
-      char *tempName;
       Abc_NtkForEachPi( pNtkCone, pPi, j ) // Traverse all PIs to the node
       {
-        if ((!strstr(Abc_ObjName(pPi), "key")) && (pDi1[j] != pDi2[j])) // If the input is not a key and is sensitizing
+        if ((!strstr(Abc_ObjName(pPi), "key")) && (conArr[j] == -1)) // If the input is not a key and is relevant to leakage
         {
           printf("PI in Miter: %s\n", Abc_ObjName(pPi));
           Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
@@ -663,14 +712,11 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           }
         }
       }
-
-      // Print how many inputs we reduced
       printf("Adjoining Gate input fanin reduced from %d to %d.\n", nonKIFs, addedFanins);
 
       // Check if the list of fanins is 1 (Add another non-key fanininput so that we don't have a one-input gate)
       if (addedFanins == 1)
       {
-        int k = 0;
         Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
         {
           if (!strstr(Abc_ObjName(pPiSource), "key") && strcmp(Abc_ObjName(pPiSource), tempName) != 0) // If the input is not a key and not the same input as earlier
@@ -718,10 +764,8 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         newNodeInv->adjTag = 0; //We want the adjacency tags to stay at 0 so it doesn't show up in scan
       }
       printf("\nNode %s added.\n", Abc_ObjName( newNode ));
-      free(pDi1);
-      free(pDi2);
-      free(KeyWithFreq);
-      free(KeyNoFreq);
+      //free(KeyWithFreq);
+      //free(KeyNoFreq);
       return 1;
     }
   }
@@ -1940,9 +1984,9 @@ void ClapAttack_UpdateKeyCnf(Abc_Ntk_t **ppNtk, int NumKeys, int *WrongKeyValue,
 
 // Make the logic formula for the CLAP attack indicating whether probing a given node produces key leakage.
 // Essentially 3 miter circuits are generated for the circuit to assess the leakage produced by probing the node.
-int ClapAttack_MakeMiterHeuristic(Abc_Ntk_t *pNtkCone, Abc_Ntk_t *pNtkPartialKey, Abc_Ntk_t **ppNtkMiter) {
-    Abc_Ntk_t *pNtkTmpMiter1, *pNtkMiter2, *pNtkTmpMiter2, *pKeyMiter, *pNtkPartialKeyMiter, *pNtkPartialKeyMiterTmp,
-        *ntkTmp;
+int ClapAttack_MakeMiterHeuristic(Abc_Ntk_t *pNtkCone, Abc_Ntk_t *pNtkPartialKey, Abc_Ntk_t **ppNtkMiter)
+{
+    Abc_Ntk_t *pNtkTmpMiter1, *pNtkMiter2, *pNtkTmpMiter2, *pKeyMiter, *pNtkPartialKeyMiter, *pNtkPartialKeyMiterTmp, *ntkTmp;
     Abc_Obj_t *pNode;
     Fraig_Params_t Params;
     int fCheck;
