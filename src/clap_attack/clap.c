@@ -545,9 +545,9 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
 // Adds a blank node to the network
 int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
 {
-  Abc_Ntk_t *pNtk, *pNtkCone, *pNtkConeTemp, *pNtkMiter;
+  Abc_Ntk_t *pNtk, *pNtkCone, *pNtkMiter;
   Abc_Obj_t *newNode, *newNodeInv, *pNode, *pPi, *pPiSource, *newPo;
-  Vec_Ptr_t *vFanins;
+  //Vec_Ptr_t *vFanins;
   struct BSI_KeyData_t GlobalBsiKeys;
   int ctr = 0, i=0, j=0, k=0, NumKeys; // *KeyWithFreq, *KeyNoFreq, 
   int SatStatus = 1, MiterStatus = 1; 
@@ -563,14 +563,26 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
     return 0;
   }
 
+  //Initializing new objects
+  newNode = Abc_NtkCreateNodeConst0(pNtk);
+  newNodeInv = Abc_NtkCreateNodeConst0(pNtk);
+  newPo = Abc_NtkCreatePo( pNtk );
+
   Abc_NtkForEachNode( pNtk, pNode, i ) // Traverse all nodes
   {
     if(!strcmp(Abc_ObjName( pNode ), targetNode)) // If this is the target node
     {
-      ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0); // Isolate the target node's fanin cone (single resolution)
-      ClapAttack_IsolateCone(pNtk, &pNtkConeTemp, pNode, 1, 0);
+      if(highestTag!=0 && adjGrouping>1) //If the network is grouped
+      {
+        highestTag++; //Incrementing the highest tag
+        pNode->adjTag = highestTag; //Putting the target node in its own group
+      }
 
-      int conArr[Abc_NtkPiNum(pNtkCone)];
+      ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0); // Isolate the target node's fanin cone (single resolution)
+
+      int NtkConePINum = Abc_NtkPiNum(pNtkCone);
+
+      int conArr[NtkConePINum];
 
       NumKeys = ClapAttack_GetNumKeys( pNtkCone );
       ClapAttack_InitKeyStore( NumKeys, &GlobalBsiKeys );
@@ -588,18 +600,26 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       }
       printf("Number of non-key inputs: %d\n", nonKIFs);
 
+      
+
       // Initializing Consideration Array:
-      for(j = 0; j<Abc_NtkPiNum(pNtkCone); j++)
+      for(j = 0; j<NtkConePINum; j++)
       {
         conArr[j] = j;
       }
 
+      int startIter = 0;
       while(1) //Loop for iterating SAT solver
       {
+        if(startIter != 0)
+        {
+          ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 2, 1); //Re-isolating the cone with resolution size 2
+        }
+
         SatStatus = 1;
         MiterStatus = 1;
         GlobalBsiKeys.Updated = 0;
-        MiterStatus = ClapAttack_MakeMiterHeuristic(pNtkConeTemp, GlobalBsiKeys.pKeyCnf, &pNtkMiter);
+        MiterStatus = ClapAttack_MakeMiterHeuristic(pNtkCone, GlobalBsiKeys.pKeyCnf, &pNtkMiter);
 
         // Did the miter generate successfully?
         if (!MiterStatus)
@@ -639,13 +659,15 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           pDi2[j] = pNtkMiter->pModel[j + halfMiterPINum];
         }
 
+        printf("Miter result after SAT:\n");
+        printf("Pattern 1:\n");
         // DEBUG: Print pattern 1 input
         //ClapAttack_PrintInp( pNtkCone, pDi1 );
         for (j = 0; j < halfMiterPINum; j++)
         {
           printf("Input %d: %d\n", j, pDi1[j]);
         }
-
+        printf("Pattern 2:\n");
         // DEBUG: Print pattern 2 input/output
         //ClapAttack_PrintInp( pNtkCone, pDi2 );
         for (j = 0; j < halfMiterPINum; j++)
@@ -654,11 +676,11 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         }
         // Updating Consideration Array:
         ctr = 0;
-        for (j = 0; j < halfMiterPINum; j++) // Setting removed PIs to -1
+        for (j = 0; j < halfMiterPINum; j++) // Setting targeted PIs to -1
         {
           if(pDi1[j] != pDi2[j])
           {
-            for(k = 0; k < Abc_NtkPiNum(pNtkCone); k++) // Find the corresponding index in the conArr
+            for(k = 0; k < NtkConePINum; k++) // Find the corresponding index in the conArr
             {
               if(conArr[k] == j)
               {
@@ -670,10 +692,13 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         }
         if(ctr == 0) // If the network is unSAT (no counter-example found), finish
         {
+          printf("Adjoining Gate input fanin reduced from %d to %d.\n", nonKIFs, addedFanins);
+          printf("\nNode %s added.\n", Abc_ObjName( newNode ));
+          return 1;
           break;
         }
         ctr = 0;
-        for (j = 0; j < Abc_NtkPiNum(pNtkCone); j++) // Reorganize the indices in the consideration array
+        for (j = 0; j < NtkConePINum; j++) // Reorganize the indices in the consideration array
         {
           if(conArr[j] != -1)
           {
@@ -681,92 +706,79 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
             ctr++;
           }
         }
-
-        // Removing non-considered inputs from the temporary cone:
-        Abc_NtkForEachPi( pNtkConeTemp, pPi, j )
+        
+        // Creating an adjoining gate:
+        Vec_Ptr_t *vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins (Just in case)
+        addedFanins = 0;
+        Abc_NtkForEachPi( pNtkCone, pPi, j ) // Traverse all PIs to the node
         {
-          if(pDi1[j] != pDi2[j])
+          if ((j < NtkConePINum) && (!strstr(Abc_ObjName(pPi), "key")) && (conArr[j] == -1)) // If the input is not a key and is relevant to leakage
           {
-            Abc_ObjReplaceByConstant(pPi, pDi2[j]);
-            Abc_NtkDeleteObj(pPi);
-          }
-        }
-        Abc_NtkDelete(pNtkMiter); // Reset the miter
-      }
-      
-      //Loading up the PIs:
-      vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins (Just in case)
-      Abc_NtkForEachPi( pNtkCone, pPi, j ) // Traverse all PIs to the node
-      {
-        if ((!strstr(Abc_ObjName(pPi), "key")) && (conArr[j] == -1)) // If the input is not a key and is relevant to leakage
-        {
-          printf("PI in Miter: %s\n", Abc_ObjName(pPi));
-          Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
-          {
-            if (!strcmp(Abc_ObjName(pPi), Abc_ObjName(pPiSource))) // If the names match, add the PI to the adjoining gate's fanin
+            Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
             {
-              Vec_PtrSetEntry(vFanins, addedFanins, pPiSource);
-              tempName = Abc_ObjName(pPi);
-              addedFanins++;
+              if (!strcmp(Abc_ObjName(pPi), Abc_ObjName(pPiSource))) // If the names match, add the PI to the adjoining gate's fanin
+              {
+                Vec_PtrSetEntry(vFanins, addedFanins, pPiSource);
+                tempName = Abc_ObjName(pPi);
+                addedFanins++;
+              }
             }
           }
         }
-      }
-      printf("Adjoining Gate input fanin reduced from %d to %d.\n", nonKIFs, addedFanins);
-
-      // Check if the list of fanins is 1 (Add another non-key fanininput so that we don't have a one-input gate)
-      if (addedFanins == 1)
-      {
-        Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
+        
+        // Check if the list of fanins is 1 (Add another non-key fanininput so that we don't have a one-input gate)
+        if (addedFanins == 1)
         {
-          if (!strstr(Abc_ObjName(pPiSource), "key") && strcmp(Abc_ObjName(pPiSource), tempName) != 0) // If the input is not a key and not the same input as earlier
+          Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
           {
-            Vec_PtrSetEntry(vFanins, 1, pPiSource);
-            printf("Found a node with fanin 1 and added an extra input.");
-            break;
+            if (!strstr(Abc_ObjName(pPiSource), "key") && strcmp(Abc_ObjName(pPiSource), tempName) != 0) // If the input is not a key and not the same input as earlier
+            {
+              Vec_PtrSetEntry(vFanins, 1, pPiSource);
+              printf("Found a node with fanin 1 and added an extra input.");
+              break;
+            }
           }
         }
-      }
+        
+        //Seg Faulting Here:
+        Abc_NtkDeleteObj( newNode );
+        Abc_NtkDeleteObj( newNodeInv );
+        Abc_NtkDeleteObj( newPo );
+        
+        if(gateType == 1) //Will create a NOR
+        {
+          newNode = Abc_NtkCreateNodeOr( pNtk, vFanins);
+        }
+        else if(gateType == 2) //Will create a NAND
+        {
+          newNode = Abc_NtkCreateNodeAnd( pNtk, vFanins);
+        }
+        else
+        {
+          newNode = Abc_NtkCreateNodeExor( pNtk, vFanins); //Will create a NXOR
+        }
+        //Assign the adjoining gate a name
+        Abc_ObjAssignName( newNode, Abc_ObjName(pNode), "adj" );
 
-      if(gateType == 1) //Will create a NOR
-      {
-        newNode = Abc_NtkCreateNodeOr( pNtk, vFanins);
-      }
-      else if(gateType == 2) //Will create a NAND
-      {
-        newNode = Abc_NtkCreateNodeAnd( pNtk, vFanins);
-      }
-      else
-      {
-        newNode = Abc_NtkCreateNodeExor( pNtk, vFanins); //Will create a NXOR
-      }
-      //Assign the adjoining gate a name
-      Abc_ObjAssignName( newNode, Abc_ObjName(pNode), "adj" );
+        //Add an inverter on its output:
+        newNodeInv = Abc_NtkCreateNodeInv(pNtk, newNode);
+        Abc_ObjAssignName( newNodeInv, Abc_ObjName(newNode), "I" );
 
-      //Add an inverter on its output:
-      newNodeInv = Abc_NtkCreateNodeInv(pNtk, newNode);
-      Abc_ObjAssignName( newNodeInv, Abc_ObjName(newNode), "I" );
+        // Set Levels
+        newNode->Level = 1;
+        newNodeInv->Level = 2;
 
-      // Set Levels
-      newNode->Level = 1;
-      newNodeInv->Level = 2;
-      
-      //Creating primary output for added node
-      newPo = Abc_NtkCreatePo( pNtk );
-      Abc_ObjAssignName( newPo, Abc_ObjName(pNode), "adjPo" );
-      Abc_ObjAddFanin( newPo, newNodeInv );
+        // Set Adjacency Tags
+        newNode->adjTag = pNode->adjTag;
+        newNodeInv->adjTag = 0;
+        
+        //Creating primary output for added node
+        newPo = Abc_NtkCreatePo( pNtk );
+        Abc_ObjAssignName( newPo, Abc_ObjName(pNode), "adjPo" );
+        Abc_ObjAddFanin( newPo, newNodeInv );
 
-      if(highestTag!=0 && adjGrouping>1) //If the network is grouped
-      {
-        highestTag++; //Incrementing the highest tag
-        pNode->adjTag = highestTag; //Putting the target node in its own group
-        newNode->adjTag = pNode->adjTag; //Add new node to the adjacency group, "orphaning" the non-target nodes
-        newNodeInv->adjTag = 0; //We want the adjacency tags to stay at 0 so it doesn't show up in scan
+        startIter++;
       }
-      printf("\nNode %s added.\n", Abc_ObjName( newNode ));
-      //free(KeyWithFreq);
-      //free(KeyNoFreq);
-      return 1;
     }
   }
   printf("\nFailed: node %s not found in the network.\n", targetNode);
