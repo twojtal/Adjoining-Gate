@@ -549,11 +549,11 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
   Abc_Obj_t *newNode, *newNodeInv, *pNode, *pPi, *pPiSource, *newPo;
   //Vec_Ptr_t *vFanins;
   struct BSI_KeyData_t GlobalBsiKeys;
-  int ctr = 0, i=0, j=0, k=0, NumKeys; // *KeyWithFreq, *KeyNoFreq, 
+  int i=0, j=0, k=0, NumKeys; // *KeyWithFreq, *KeyNoFreq, 
   int SatStatus = 1, MiterStatus = 1; 
   //int *pDi, *pDi1, *pDi2;
-  int addedFanins = 0;
-  char *tempName;
+  int addedFanins = 0, PIarrCtr = 0;
+  //char *tempName;
 
   printf("Add Node Function:\n");
   pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
@@ -566,7 +566,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
   //Initializing new objects
   newNode = Abc_NtkCreateNodeConst0(pNtk);
   newNodeInv = Abc_NtkCreateNodeConst0(pNtk);
-  newPo = Abc_NtkCreatePo( pNtk );
+  newPo = Abc_NtkCreatePo(pNtk);
 
   Abc_NtkForEachNode( pNtk, pNode, i ) // Traverse all nodes
   {
@@ -581,7 +581,8 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0); // Isolate the target node's fanin cone (single resolution)
 
       int NtkConePINum = Abc_NtkPiNum(pNtkCone);
-
+      Vec_Ptr_t *vFanins = Vec_PtrAlloc( NtkConePINum ); // Alloc Size to number of fanins (Just in case)
+      char nameArr[NtkConePINum][10]; // Array to store node names
       int conArr[NtkConePINum];
 
       NumKeys = ClapAttack_GetNumKeys( pNtkCone );
@@ -599,8 +600,6 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         }
       }
       printf("Number of non-key inputs: %d\n", nonKIFs);
-
-      
 
       // Initializing Consideration Array:
       for(j = 0; j<NtkConePINum; j++)
@@ -633,6 +632,14 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           return 0;
         }
 
+        if(!SatStatus)
+        {
+          //printf("SAT failed.\n");
+          printf("Adjoining Gate input fanin reduced from %d to %d.\n", nonKIFs, PIarrCtr);
+          printf("\nNode %s added.\n", Abc_ObjName( newNode ));
+          return 1;
+        }
+
         /*for (int m = 0; m < Abc_NtkPiNum(pNtkMiter); m++)
         {
           printf("Input %d: %d\n", m, pNtkMiter->pModel[m]);
@@ -659,7 +666,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           pDi2[j] = pNtkMiter->pModel[j + halfMiterPINum];
         }
 
-        printf("Miter result after SAT:\n");
+        /*printf("Miter result after SAT:\n");
         printf("Pattern 1:\n");
         // DEBUG: Print pattern 1 input
         //ClapAttack_PrintInp( pNtkCone, pDi1 );
@@ -673,61 +680,52 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         for (j = 0; j < halfMiterPINum; j++)
         {
           printf("Input %d: %d\n", j, pDi2[j]);
-        }
-        // Updating Consideration Array:
-        ctr = 0;
-        for (j = 0; j < halfMiterPINum; j++) // Setting targeted PIs to -1
+        }*/
+        
+        // Creating an adjoining gate:
+        addedFanins = 0;
+        Abc_NtkForEachPi( pNtkCone, pPi, j ) // Traverse all PIs to the node
         {
-          if(pDi1[j] != pDi2[j])
+          if ((j < NtkConePINum) && (pDi1[j] != pDi2[j]) && (!strstr(Abc_ObjName(pPi), "key"))) // If the input is not a key and is relevant to leakage
           {
-            for(k = 0; k < NtkConePINum; k++) // Find the corresponding index in the conArr
+            int new = 1;
+            for (int n = 0; n < NtkConePINum; n++) // Check if element already exists in array
             {
-              if(conArr[k] == j)
+              if (!strcmp(Abc_ObjName(pPi), nameArr[n])) // If exists, break
               {
-                conArr[k] = -1;
-                ctr++;
+                new = 0;
+                break;
               }
+            }
+            if (new == 1) // Unvisited PI, add it to the array and process it
+            {
+              strcpy(nameArr[PIarrCtr], Abc_ObjName(pPi)); //Add the PI's name to the array
+              Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
+              {
+                if (!strcmp(Abc_ObjName(pPi), Abc_ObjName(pPiSource))) // If the names match, add the PI to the adjoining gate's fanin
+                {
+                  Vec_PtrSetEntry(vFanins, PIarrCtr, pPiSource);
+                  //tempName = Abc_ObjName(pPi);
+                }
+              }
+              addedFanins++;
+              PIarrCtr++;
             }
           }
         }
-        if(ctr == 0) // If the network is unSAT (no counter-example found), finish
+
+        printf("addedFanins: %d, PIarrCtr: %d\n", addedFanins, PIarrCtr);
+
+        if(addedFanins == 0)
         {
-          printf("Adjoining Gate input fanin reduced from %d to %d.\n", nonKIFs, addedFanins);
+          printf("Adjoining Gate input fanin reduced from %d to %d.\n", nonKIFs, PIarrCtr);
           printf("\nNode %s added.\n", Abc_ObjName( newNode ));
           return 1;
           break;
         }
-        ctr = 0;
-        for (j = 0; j < NtkConePINum; j++) // Reorganize the indices in the consideration array
-        {
-          if(conArr[j] != -1)
-          {
-            conArr[j] = ctr;
-            ctr++;
-          }
-        }
-        
-        // Creating an adjoining gate:
-        Vec_Ptr_t *vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins (Just in case)
-        addedFanins = 0;
-        Abc_NtkForEachPi( pNtkCone, pPi, j ) // Traverse all PIs to the node
-        {
-          if ((j < NtkConePINum) && (!strstr(Abc_ObjName(pPi), "key")) && (conArr[j] == -1)) // If the input is not a key and is relevant to leakage
-          {
-            Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
-            {
-              if (!strcmp(Abc_ObjName(pPi), Abc_ObjName(pPiSource))) // If the names match, add the PI to the adjoining gate's fanin
-              {
-                Vec_PtrSetEntry(vFanins, addedFanins, pPiSource);
-                tempName = Abc_ObjName(pPi);
-                addedFanins++;
-              }
-            }
-          }
-        }
         
         // Check if the list of fanins is 1 (Add another non-key fanininput so that we don't have a one-input gate)
-        if (addedFanins == 1)
+        /*if (addedFanins == 1)
         {
           Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
           {
@@ -738,9 +736,9 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
               break;
             }
           }
-        }
+        }*/
         
-        //Seg Faulting Here:
+        //Resetting the adjoining gate:
         Abc_NtkDeleteObj( newNode );
         Abc_NtkDeleteObj( newNodeInv );
         Abc_NtkDeleteObj( newPo );
@@ -776,6 +774,9 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         newPo = Abc_NtkCreatePo( pNtk );
         Abc_ObjAssignName( newPo, Abc_ObjName(pNode), "adjPo" );
         Abc_ObjAddFanin( newPo, newNodeInv );
+
+        //Abc_NtkDelete(pNtkCone);
+        //Abc_NtkDelete(pNtkMiter);
 
         startIter++;
       }
