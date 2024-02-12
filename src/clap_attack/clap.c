@@ -615,7 +615,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 2, 1); //Re-isolating the cone with resolution size 2
         }
 
-        SatStatus = 1;
+        SatStatus = 0;
         MiterStatus = 1;
         GlobalBsiKeys.Updated = 0;
         MiterStatus = ClapAttack_MakeMiterHeuristic(pNtkCone, GlobalBsiKeys.pKeyCnf, &pNtkMiter);
@@ -632,9 +632,9 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           return 0;
         }
 
-        if(!SatStatus)
+        if(SatStatus)
         {
-          //printf("SAT failed.\n");
+          printf("SAT failed.\n");
           printf("Adjoining Gate input fanin reduced from %d to %d.\n", nonKIFs, PIarrCtr);
           printf("\nNode %s added.\n", Abc_ObjName( newNode ));
           return 1;
@@ -666,7 +666,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           pDi2[j] = pNtkMiter->pModel[j + halfMiterPINum];
         }
 
-        /*printf("Miter result after SAT:\n");
+        printf("Miter result after SAT:\n");
         printf("Pattern 1:\n");
         // DEBUG: Print pattern 1 input
         //ClapAttack_PrintInp( pNtkCone, pDi1 );
@@ -680,7 +680,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         for (j = 0; j < halfMiterPINum; j++)
         {
           printf("Input %d: %d\n", j, pDi2[j]);
-        }*/
+        }
         
         // Creating an adjoining gate:
         addedFanins = 0;
