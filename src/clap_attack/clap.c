@@ -563,6 +563,8 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
     return 0;
   }
 
+
+
   //Initializing new objects
   newNode = Abc_NtkCreateNodeConst0(pNtk);
   newNodeInv = Abc_NtkCreateNodeConst0(pNtk);
@@ -577,6 +579,11 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         highestTag++; //Incrementing the highest tag
         pNode->adjTag = highestTag; //Putting the target node in its own group
       }
+      else
+      {
+        printf("AddNode Failed: Network not grouped.\n");
+        return 0;
+      }
 
       ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 1, 0); // Isolate the target node's fanin cone (single resolution)
 
@@ -590,7 +597,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
 
       // Status Prints
       printf("Evaluating node %s\n", Abc_ObjName(pNode));
-      printf("The number of keys (KIF): %d\n", pNode->KIF);
+      printf("Number of key inputs (KIF): %d\n", pNode->KIF);
       int nonKIFs = 0;
       Abc_NtkForEachPi( pNtkCone, pPi, j )
       {
@@ -600,11 +607,12 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         }
       }
       printf("Number of non-key inputs: %d\n", nonKIFs);
+      printf("Total number of inputs: %d\n", (nonKIFs + pNode->KIF) );
 
-      // Initializing Consideration Array:
+      // Initializing Consideration Array to 0 (Unchecked):
       for(j = 0; j<NtkConePINum; j++)
       {
-        conArr[j] = j;
+        conArr[j] = 0;
       }
 
       int startIter = 0;
