@@ -610,13 +610,13 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       for(j = 0; j <= NtkConePINum; j++)
       {
         //Debug Prints:
-        printf("Top of loop, iteration %d\n", j);
+        /*printf("Top of loop, iteration %d\n", j);
         printf("ConArr: ");
         for(k = 0; k <= NtkConePINum; k++)
         {
           printf("%d, ", conArr[k]);
         }
-        printf("\n");
+        printf("\n");*/
 
         if(conArr[j] != 2) // Ensuring considered PI is not a key
         {
@@ -644,15 +644,34 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
             }
           }
 
+          if(addedFanins == 0) //If no fanins are added then this PI is the only significant one
+          {
+            Abc_NtkForEachPi( pNtkCone, pPi, k ) // Traverse all PIs to the node
+            {
+              if (k == j)
+              {
+                Abc_NtkForEachPi( pNtk, pPiSource, m ) // Find the corresponding primary input in the main network
+                {
+                  if (!strcmp(Abc_ObjName(pPi), Abc_ObjName(pPiSource))) // If the names match, add the PI to the adjoining gate's fanin
+                  {
+                    Vec_PtrSetEntry(vFanins, addedFanins, pPiSource);
+                    tempName = Abc_ObjName(pPiSource);
+                    addedFanins++;
+                  }
+                }
+              }
+            }
+            conArr[j] = 1;
+          }
+
           // Check if the list of fanins is 1 (Add another non-key input so that we don't have a one-input gate)
-          if (j == NtkConePINum && addedFanins == 1) // This can only run on the last iteration
+          if (addedFanins == 1) // This can only run on the last iteration
           {
             Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
             {
               if (!strstr(Abc_ObjName(pPiSource), "key") && strcmp(Abc_ObjName(pPiSource), tempName) != 0) // If the input is not a key and not the same input as earlier
               {
                 Vec_PtrSetEntry(vFanins, 1, pPiSource);
-                printf("Node has only 1 input relevant to leakage. Utilized an additional arbitrary input for adjoining gate.\n");
               }
             }
           }
@@ -669,13 +688,9 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           {
             newNode = Abc_NtkCreateNodeExor( pNtk, vFanins);
           }
-          
-          //Assign the adjoining gate a name
-          Abc_ObjAssignName( newNode, Abc_ObjName(pNode), "adj" );
 
           //Add an inverter on its output:
           newNodeInv = Abc_NtkCreateNodeInv(pNtk, newNode);
-          Abc_ObjAssignName( newNodeInv, Abc_ObjName(newNode), "I" );
 
           // Set Levels
           newNode->Level = 1;
@@ -687,13 +702,19 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           
           //Creating primary output for added node
           newPo = Abc_NtkCreatePo( pNtk );
-          Abc_ObjAssignName( newPo, Abc_ObjName(pNode), "adjPo" );
           Abc_ObjAddFanin( newPo, newNodeInv );
 
-          if (j == NtkConePINum) // Quit on the last iteration
+          if (j == NtkConePINum) // On the last iteration
           {
+            //Assign Names:
+            Abc_ObjAssignName( newNode, Abc_ObjName(pNode), "adj" );
+            Abc_ObjAssignName( newNodeInv, Abc_ObjName(newNode), "I" );
+            Abc_ObjAssignName( newPo, Abc_ObjName(pNode), "adjPo" );
+
+            //Check if there is only one added fanin:
             if(addedFanins == 1)
             {
+              printf("Node has only 1 input relevant to leakage. Utilized an additional arbitrary input for adjoining gate.\n");
               PIarrCtr++;
             }
             break;
@@ -719,13 +740,16 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
             return 0;
           }
 
-          if(SatStatus) // SAT Failed (no leakage)
+          if(conArr[j] == 0) // If the value in conArr is not visited, update it
           {
-            conArr[j] = 2;
-          }
-          else // SAT Found (leakage present)
-          {
-            conArr[j] = 1;
+            if(SatStatus) // SAT Failed (no leakage)
+            {
+              conArr[j] = 2;
+            }
+            else // SAT Found (leakage present)
+            {
+              conArr[j] = 1;
+            }
           }
         }
       }
