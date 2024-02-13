@@ -551,7 +551,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
   int i=0, j=0, k=0, m=0, PIarrCtr=0, addedFanins, NumKeys, SatStatus, MiterStatus, NtkConePINum;
   char *tempName = "";
 
-  printf("Add Node Function:\n");
+  printf("AddNode Function:\n");
   pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
   if(pNtk == NULL)
   {
@@ -723,8 +723,6 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           // Perform SAT to see if input was relevant to leakage
           ClapAttack_IsolateCone(pNtk, &pNtkCone, pNode, 2, 1); //Re-isolating the cone with resolution size 2
 
-          printf("Reached statement\n");
-
           SatStatus = 0;
           MiterStatus = 1;
           GlobalBsiKeys.Updated = 0;
@@ -857,7 +855,7 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
       nodeCtr++;
     }
   }
-  printf("Added adjoining gates to %d nodes\n",nodeCtr);
+  printf("Added adjoining gates to %d node(s).\n",nodeCtr);
   return 1;
 }
 
