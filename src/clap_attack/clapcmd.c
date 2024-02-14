@@ -8,8 +8,6 @@ static int AdjoiningGate_ScanLeakage_CMD( Abc_Frame_t *pAbc, int argc, int **arg
 static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t *pAbc, int argc, int **argv );
 static int AdjoiningGate_BFS_CMD( Abc_Frame_t *pAbc, int argc, int **argv );
 static int AdjoiningGate_AddNode_CMD( Abc_Frame_t *pAbc, int argc, int **argv );
-static int AdjoiningGate_RemoveNode_CMD( Abc_Frame_t *pAbc, int argc, int **argv );
-static int AdjoiningGate_ReplaceNode_CMD( Abc_Frame_t *pAbc, int argc, int **argv );
 static int AdjoiningGate_Run_CMD( Abc_Frame_t *pAbc, int argc, int **argv );
 
 // Function Definitions
@@ -19,8 +17,6 @@ void ClapAttack_Init(Abc_Frame_t * pAbc) {
   Cmd_CommandAdd(pAbc, "Various", "bfs", AdjoiningGate_BFS_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "add", AdjoiningGate_AddNode_CMD, 0);
   Cmd_CommandAdd(pAbc, "Various", "run", AdjoiningGate_Run_CMD, 0);
-  //Cmd_CommandAdd(pAbc, "Various", "rep", AdjoiningGate_ReplaceNode_CMD, 0);
-  //Cmd_CommandAdd(pAbc, "Various", "rem", AdjoiningGate_RemoveNode_CMD, 0);
 }
 
 int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
@@ -380,144 +376,6 @@ int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
   Abc_Print(-2, "\t-v         : toggle printing verbose information [default = %s]\n", fVerbose ? "yes" : "no");
   Abc_Print(-2, "\t-h         : print the command usage \n");
   Abc_Print(-2, "\t-g         : specify the gate type (or, and, xor) \n");
-  return 1;
-}
-
-int AdjoiningGate_RemoveNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
-{
-  int fVerbose;
-  int c, result;
-  char * delNode = NULL;
-  
-  // set defaults
-  fVerbose = 0;
-
-  // get arguments
-  Extra_UtilGetoptReset();
-  while ((c = Extra_UtilGetopt(argc, argv, "vhn")) != EOF) {
-    switch (c) {
-    case 'n':
-      if ( globalUtilOptind >= argc )
-      {
-        Abc_Print( -1, "Command line switch \"-n\" must be followed by a node string.\n" );
-        goto usage;
-      }
-      delNode = argv[globalUtilOptind];
-      globalUtilOptind++;
-      break;
-    case 'v':
-      fVerbose ^= 1;
-      break;
-    case 'h':
-      goto usage;
-    default:
-      goto usage;
-    }
-  }
-
-  // Check if there is currently a network. If not, exit.
-  if ( pAbc->pNtkCur == NULL )
-  {
-    fprintf( pAbc->Out, "Empty network.\n" );
-    return 0;
-  }
-  
-  // If no node was specified, show error
-  if (delNode == NULL) {
-    fprintf( pAbc->Out, "No node specified for deletion.\n" );
-    return 0;
-  }
-  
-  // call the main function
-  result = AdjoiningGate_RemoveNode(pAbc, delNode);
-
-  // print verbose information if the verbose mode is on
-  if (fVerbose) {
-    Abc_Print(1, "\nVerbose mode is on.\n");
-    if (result)
-      Abc_Print(1, "The command finished successfully.\n");
-    else Abc_Print(1, "The command execution has failed.\n");
-  }
-
-  //exit(0);
-
-  return 0;
-
- usage:
-  Abc_Print(-2, "usage: del [-vh] -n <node> \n");
-  Abc_Print(-2, "\t           Delete a node in the network.\n");
-  Abc_Print(-2, "\t-n <node>  : input the node to be deleted \n");
-  Abc_Print(-2, "\t-v         : toggle printing verbose information [default = %s]\n", fVerbose ? "yes" : "no");
-  Abc_Print(-2, "\t-h         : print the command usage \n");
-  return 1;
-}
-
-int AdjoiningGate_ReplaceNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
-{
-  int fVerbose;
-  int c, result;
-  char * repNode = NULL;
-  
-  // set defaults
-  fVerbose = 0;
-
-  // get arguments
-  Extra_UtilGetoptReset();
-  while ((c = Extra_UtilGetopt(argc, argv, "vhn")) != EOF) {
-    switch (c) {
-    case 'n':
-      if ( globalUtilOptind >= argc )
-      {
-        Abc_Print( -1, "Command line switch \"-n\" must be followed by a node string.\n" );
-        goto usage;
-      }
-      repNode = argv[globalUtilOptind];
-      globalUtilOptind++;
-      break;
-    case 'v':
-      fVerbose ^= 1;
-      break;
-    case 'h':
-      goto usage;
-    default:
-      goto usage;
-    }
-  }
-
-  // Check if there is currently a network. If not, exit.
-  if ( pAbc->pNtkCur == NULL )
-  {
-    fprintf( pAbc->Out, "Empty network.\n" );
-    return 0;
-  }
-  
-  // If no node was specified, show error
-  if (repNode == NULL) {
-    fprintf( pAbc->Out, "No node specified for replacement.\n" );
-    return 0;
-  }
-  
-  // call the main function
-  result = AdjoiningGate_ReplaceNode( pAbc, repNode );
-
-  // print verbose information if the verbose mode is on
-  if (fVerbose) {
-    Abc_Print(1, "\nVerbose mode is on.\n");
-    if (result)
-      Abc_Print(1, "The command finished successfully.\n");
-    else Abc_Print(1, "The command execution has failed.\n");
-  }
-
-  //exit(0);
-
-  return 0;
-
- usage:
-  Abc_Print(-2, "usage: rep [-vh] -n <node> \n");
-  Abc_Print(-2, "\t           Replace a node in the network.\n");
-  Abc_Print(-2, "\t-n <node>  : input the node to be replaced \n");
-  Abc_Print(-2, "\t-v         : toggle printing verbose information [default = %s]\n", fVerbose ? "yes" : "no");
-  Abc_Print(-2, "\t-h         : print the command usage \n");
   return 1;
 }
 

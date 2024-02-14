@@ -38,8 +38,6 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
 int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping );
 int AdjoiningGate_BFS(Abc_Frame_t *pAbc, int group_size);
 int AdjoiningGate_AddNode(Abc_Frame_t *pAbc, char *targetNode, int gateType);
-int AdjoiningGate_RemoveNode(Abc_Frame_t *pAbc, char *delNode);
-int AdjoiningGate_ReplaceNode(Abc_Frame_t *pAbc, char *repNode);
 int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType);
 int AdjoiningGate_UpdateGateTypes(Abc_Frame_t *pAbc);
 void ClapAttack_TraversalRecursive(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys, int *pOracleKey, int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf, int *pTotalProbes, int probeResolutionSize);
@@ -655,23 +653,21 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
                   if (!strcmp(Abc_ObjName(pPi), Abc_ObjName(pPiSource))) // If the names match, add the PI to the adjoining gate's fanin
                   {
                     Vec_PtrSetEntry(vFanins, addedFanins, pPiSource);
-                    tempName = Abc_ObjName(pPiSource);
                     addedFanins++;
+                    Vec_PtrSetEntry(vFanins, addedFanins, pPiSource); //Tie the same input to the gate twice
                   }
                 }
               }
             }
             conArr[j] = 1;
           }
-
-          // Check if the list of fanins is 1 (Add another non-key input so that we don't have a one-input gate)
-          if (addedFanins == 1) // This can only run on the last iteration
+          else if(addedFanins == 1) // This will only run on the last iteration
           {
             Abc_NtkForEachPi( pNtk, pPiSource, k ) // Find the corresponding primary input in the main network
             {
-              if (!strstr(Abc_ObjName(pPiSource), "key") && strcmp(Abc_ObjName(pPiSource), tempName) != 0) // If the input is not a key and not the same input as earlier
+              if (!strcmp(Abc_ObjName(pPiSource), tempName)) // If the names match, add the same PI to the adjoining gate's fanin
               {
-                Vec_PtrSetEntry(vFanins, 1, pPiSource);
+                Vec_PtrSetEntry(vFanins, 1, pPiSource); //Tie the same input to the gate twice
               }
             }
           }
@@ -715,7 +711,6 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
             if(addedFanins == 1)
             {
               printf("Node has only 1 input relevant to leakage. Utilized an additional arbitrary input for adjoining gate.\n");
-              PIarrCtr++;
             }
             break;
           }
@@ -770,70 +765,6 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
   return 0;
 }
 
-// Deletes a node from the network
-int AdjoiningGate_RemoveNode( Abc_Frame_t * pAbc, char * delNode )
-{
-  Abc_Ntk_t *pNtk;
-  Abc_Obj_t *pNode;
-  int i;
-
-  // Get the network that is read into ABC
-  pNtk = Abc_FrameReadNtk(pAbc);
-
-  if(pNtk == NULL) {
-    Abc_Print(-1, "AdjoiningGate_RemoveNode: Getting the target network has failed.\n");
-    return 0;
-  }
-
-  printf("\nRemoveNode Function:\n");
-  Abc_NtkForEachNode( pNtk, pNode, i )
-  {
-    if(strcmp(Abc_ObjName( pNode ), delNode) == 0)
-    {
-      Abc_NtkDeleteObj( pNode );
-      printf("\nNode %s successfully removed from the network.\n", delNode);
-      return 1;
-    }
-  }
-  printf("\nFailed: node %s not found in the network.\n", delNode);
-  return 0;
-}
-
-// Replaces a node in the network
-int AdjoiningGate_ReplaceNode( Abc_Frame_t * pAbc, char * repNode )
-{
-  Abc_Ntk_t *pNtk;
-  Abc_Obj_t *newNode, *pNode, *pFanin;
-  Vec_Ptr_t *vFanins;
-  int i, j;
-
-  printf("\nReplace Node Function:\n");
-  pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
-  if(pNtk == NULL)
-  {
-    Abc_Print(-1, "Getting the target network has failed.\n");
-    return 0;
-  }
-  Abc_NtkForEachNode( pNtk, pNode, i )
-  {
-    if(strcmp(Abc_ObjName( pNode ), repNode) == 0)
-    {
-      vFanins = Vec_PtrAlloc( Abc_ObjFaninNum(pNode) ); // Alloc Size to number of fanins
-      Abc_ObjForEachFanin( pNode, pFanin, j )
-      {
-        Vec_PtrSetEntry(vFanins, j, pFanin);
-      }
-      newNode = Abc_NtkCreateNodeOr( pNtk, vFanins);
-      newNode->Level = Abc_ObjLevel(pNode); //Transfer the level of the node
-      Abc_ObjReplace( pNode, newNode );
-      printf("\nNode %s successfully replaced by node %s in the network.\n", repNode, Abc_ObjName(newNode));
-      return 1;
-    }
-  }
-  printf("\nFailed: node %s not found in the network.\n", repNode);
-  return 0;
-}
-
 int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
 {
   Abc_Ntk_t *pNtk;
@@ -859,7 +790,7 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
   return 1;
 }
 
-int AdjoiningGate_UpdateGateTypes(Abc_Frame_t * pAbc)
+int AdjoiningGate_UpdateGateTypes(Abc_Frame_t * pAbc)                                                                                                                                                    
 {
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
