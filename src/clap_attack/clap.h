@@ -16,8 +16,6 @@ extern int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFil
 int AdjoiningGate_ListNetwork(Abc_Frame_t *pAbc, int aGrouping);
 int AdjoiningGate_BFS(Abc_Frame_t *pAbc, int group_size);
 int AdjoiningGate_AddNode(Abc_Frame_t *pAbc, char *targetNode, int gateType);
-int AdjoiningGate_RemoveNode(Abc_Frame_t *pAbc, char *delNode);
-int AdjoiningGate_ReplaceNode(Abc_Frame_t *pAbc, char *repNode);
 int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType);
 
 #endif
