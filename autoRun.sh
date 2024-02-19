@@ -1,6 +1,6 @@
 #! /usr/bin/bash
 
-output_file="outputG5.txt"
+output_file="outputG2.txt"
 
 for file in ./probing_benchmarks/*/*/*.bench; do
     if [ -f "$file" ]; then
@@ -8,7 +8,7 @@ echo "Scanning $file"
         temp_output=$(mktemp)
         ./abc <<EOF > "$temp_output"
 read_bench "$file"
-bfs -g 5
+bfs -g 2
 scan -g -a
 run
 quit

@@ -575,7 +575,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
   int i=0, j=0, k=0, m=0, PIarrCtr=0, addedFanins, NumKeys, SatStatus, MiterStatus, NtkConePINum;
   char *tempName = "";
 
-  printf("AddNode Function:\n");
+  //printf("AddNode Function:\n");
   pNtk = Abc_FrameReadNtk(pAbc); // Get the network that is read into ABC
   if(pNtk == NULL)
   {
@@ -612,8 +612,8 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
       conArr[NtkConePINum] = 3; // Terminating character
 
       // Status Prints and Consideration Array Initialization:
-      printf("Evaluating node %s\n", Abc_ObjName(pNode));
-      printf("Number of key inputs (KIF): %d\n", pNode->KIF);
+      //printf("Evaluating node %s\n", Abc_ObjName(pNode));
+      //printf("Number of key inputs (KIF): %d\n", pNode->KIF);
       int nonKIFs = 0;
       Abc_NtkForEachPi( pNtkCone, pPi, j )
       {
@@ -627,8 +627,8 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
           conArr[j] = 2;
         }
       }
-      printf("Number of non-key inputs: %d\n", nonKIFs);
-      printf("Total number of inputs: %d\n", (nonKIFs + pNode->KIF));
+      //printf("Number of non-key inputs: %d\n", nonKIFs);
+      //printf("Total number of inputs: %d\n", (nonKIFs + pNode->KIF));
 
       // Loop for iterating SAT solver:
       for(j = 0; j <= NtkConePINum; j++)
@@ -736,7 +736,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
             //Check if there is only one added fanin:
             if(addedFanins == 1)
             {
-              printf("Node has only 1 input relevant to leakage. Utilized an additional arbitrary input for adjoining gate.\n");
+              //printf("Node has only 1 input relevant to leakage. Tied the same PI to two inputs.\n");
             }
             break;
           }
@@ -782,9 +782,9 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
         }
       }
 
-      printf("Adjoining Gate %s added.\n", Abc_ObjName(newNode));
-      printf("Change in PIs from reduction: %d (initial) to %d (final).\n", nonKIFs, PIarrCtr);
-      return 1;
+      //printf("Adjoining Gate %s added.\n", Abc_ObjName(newNode));
+      //printf("Change in PIs from reduction: %d (initial) to %d (final).\n", nonKIFs, PIarrCtr);
+      return PIarrCtr;
     }
   }
   printf("\nFailed: node %s not found in the network.\n", targetNode);
@@ -795,7 +795,7 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
 {
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
-  int i = 0, nodeCtr = 0;
+  int i = 0, nodeCtr = 0, PIcounter=0, ;
 
   // Variables for timing
   clock_t start_time, end_time;
@@ -814,11 +814,12 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
   {
     if(pNode->leaks)
     {
-      AdjoiningGate_AddNode(pAbc, Abc_ObjName(pNode), gateType);
+      PIcounter += AdjoiningGate_AddNode(pAbc, Abc_ObjName(pNode), gateType);
       nodeCtr++;
     }
   }
   printf("Added adjoining gates to %d node(s).\n",nodeCtr);
+  printf("Adjoining Gate Add Runtime: %d", );
   return 1;
 }
 
