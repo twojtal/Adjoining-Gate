@@ -1,0 +1,17 @@
+Benchmark Path,Scan Time,PIs,POs,Total Nodes,Nodes Visited,Nodes Leaking,Added Nodes,Add Runtime,Total PIs Reduced,Final PIs,Final POs
+./probing_benchmarks/b14/AntiSAT/b14_BA16_gate_level_final.v.bench,5.781250,681,245,7607,464,128,128,1.265625,80,681,373
+./probing_benchmarks/b14/Full-Lock/b14_locked_40_40_gate_level_final.v.bench,19.296875,817,245,9715,481,236,236,1.484375,23,817,481
+./probing_benchmarks/b14/SFLL/b14_SFLL_277_gate_level_final.v.benchfix,4.421875,554,245,7742,542,139,139,0.828125,8,554,384
+./probing_benchmarks/b14/SLL/b14_SLL.bench,4.140625,533,245,7395,216,92,92,5.843750,34,533,337
+./probing_benchmarks/c1908/AntiSAT/c1908_BA16.bench,1.093750,111,25,803,207,35,35,0.390625,34,111,60
+./probing_benchmarks/c1908/Full-Lock/c1908_locked_32_32_gate_level_final.v.bench,2.546875,417,25,2501,375,189,189,1.234375,57,417,214
+./probing_benchmarks/c1908/SFLL/c1908_33_gate_level_final.v.bench,0.328125,66,25,1029,72,5,5,0.140625,5,66,30
+./probing_benchmarks/c1908/SLL/c1908_SLL.bench,0.812500,121,25,654,156,90,90,1.015625,109,121,115
+./probing_benchmarks/c5315/AntiSAT/c5315_BA16_gate_level_final.v.bench,3.796875,334,123,2401,777,481,481,3.765625,410,334,604
+./probing_benchmarks/c5315/Full-Lock/c5315_locked_40_40_gate_level_final.v.bench,4.953125,718,123,5129,506,219,219,0.812500,2,718,342
+./probing_benchmarks/c5315/SFLL/c5315_SFLL_178_gate_level_final.v.bench,0.765625,356,123,810,310,76,76,0.343750,13,356,199
+./probing_benchmarks/c5315/SLL/c5315_SLL.bench,5.125000,409,123,2975,956,764,764,19.328125,961,409,887
+./probing_benchmarks/des/AntiSAT/des_BA16_gate_level_final.v.bench,2.281250,624,245,5734,421,71,71,0.328125,22,624,316
+./probing_benchmarks/des/Full-Lock/des_locked_40_40_gate_level_final.v.bench,5.375000,796,245,7794,495,256,256,19.468750,306,796,501
+./probing_benchmarks/des/SFLL/des_SFLL_256_gate_level_final.v.benchfix,2.281250,512,245,5813,512,128,128,0.578125,0,512,373
+./probing_benchmarks/des/SLL/des_SLL.bench,20.250000,512,245,6341,3004,2739,2739,126.968750,4512,512,2984

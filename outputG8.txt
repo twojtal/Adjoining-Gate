@@ -1,0 +1,272 @@
+Scanned ./probing_benchmarks/b14/AntiSAT/b14_BA16_gate_level_final.v.bench:
+Scan Time: 5.109375
+PIs: 681
+POs: 245
+Total nodes in circuit: 7607
+Nodes visited: 45
+Nodes leaking key information: 6
+abc 02> run
+
+Added adjoining gates to 6 nodes
+Adjoining Gate Add Runtime: 0.015625
+Total Adjoining Gate Inputs Reduced: 4
+Final PIs: 681
+Final POs: 251
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/b14/Full-Lock/b14_locked_40_40_gate_level_final.v.bench:
+Scan Time: 19.421875
+PIs: 817
+POs: 245
+Total nodes in circuit: 9715
+Nodes visited: 126
+Nodes leaking key information: 38
+abc 02> run
+
+Added adjoining gates to 38 nodes
+Adjoining Gate Add Runtime: 0.125000
+Total Adjoining Gate Inputs Reduced: 10
+Final PIs: 817
+Final POs: 283
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/b14/SFLL/b14_SFLL_277_gate_level_final.v.benchfix:
+Scan Time: 3.265625
+PIs: 554
+POs: 245
+Total nodes in circuit: 7742
+Nodes visited: 24
+Nodes leaking key information: 3
+abc 02> run
+
+Added adjoining gates to 3 nodes
+Adjoining Gate Add Runtime: 0.000000
+Total Adjoining Gate Inputs Reduced: 0
+Final PIs: 554
+Final POs: 248
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/b14/SLL/b14_SLL.bench:
+Scan Time: 4.046875
+PIs: 533
+POs: 245
+Total nodes in circuit: 7395
+Nodes visited: 49
+Nodes leaking key information: 29
+abc 02> run
+
+Added adjoining gates to 29 nodes
+Adjoining Gate Add Runtime: 1.000000
+Total Adjoining Gate Inputs Reduced: 28
+Final PIs: 533
+Final POs: 274
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/c1908/AntiSAT/c1908_BA16.bench:
+Scan Time: 0.406250
+PIs: 111
+POs: 25
+Total nodes in circuit: 803
+Nodes visited: 27
+Nodes leaking key information: 0
+abc 02> run
+
+Added adjoining gates to 0 nodes
+Adjoining Gate Add Runtime: 0.000000
+Total Adjoining Gate Inputs Reduced: 0
+Final PIs: 111
+Final POs: 25
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/c1908/Full-Lock/c1908_locked_32_32_gate_level_final.v.bench:
+Scan Time: 3.937500
+PIs: 417
+POs: 25
+Total nodes in circuit: 2501
+Nodes visited: 92
+Nodes leaking key information: 34
+abc 02> run
+
+Added adjoining gates to 34 nodes
+Adjoining Gate Add Runtime: 0.078125
+Total Adjoining Gate Inputs Reduced: 15
+Final PIs: 417
+Final POs: 59
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/c1908/SFLL/c1908_33_gate_level_final.v.bench:
+Scan Time: 0.250000
+PIs: 66
+POs: 25
+Total nodes in circuit: 1029
+Nodes visited: 2
+Nodes leaking key information: 0
+abc 02> run
+
+Added adjoining gates to 0 nodes
+Adjoining Gate Add Runtime: 0.000000
+Total Adjoining Gate Inputs Reduced: 0
+Final PIs: 66
+Final POs: 25
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/c1908/SLL/c1908_SLL.bench:
+Scan Time: 0.453125
+PIs: 121
+POs: 25
+Total nodes in circuit: 654
+Nodes visited: 47
+Nodes leaking key information: 6
+abc 02> run
+
+Added adjoining gates to 6 nodes
+Adjoining Gate Add Runtime: 0.031250
+Total Adjoining Gate Inputs Reduced: 5
+Final PIs: 121
+Final POs: 31
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/c5315/AntiSAT/c5315_BA16_gate_level_final.v.bench:
+Scan Time: 0.890625
+PIs: 334
+POs: 123
+Total nodes in circuit: 2401
+Nodes visited: 79
+Nodes leaking key information: 19
+abc 02> run
+
+Added adjoining gates to 19 nodes
+Adjoining Gate Add Runtime: 0.062500
+Total Adjoining Gate Inputs Reduced: 19
+Final PIs: 334
+Final POs: 142
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/c5315/Full-Lock/c5315_locked_40_40_gate_level_final.v.bench:
+Scan Time: 8.375000
+PIs: 718
+POs: 123
+Total nodes in circuit: 5129
+Nodes visited: 168
+Nodes leaking key information: 15
+abc 02> run
+
+Added adjoining gates to 15 nodes
+Adjoining Gate Add Runtime: 0.062500
+Total Adjoining Gate Inputs Reduced: 3
+Final PIs: 718
+Final POs: 138
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/c5315/SFLL/c5315_SFLL_178_gate_level_final.v.bench:
+Scan Time: 0.312500
+PIs: 356
+POs: 123
+Total nodes in circuit: 810
+Nodes visited: 31
+Nodes leaking key information: 0
+abc 02> run
+
+Added adjoining gates to 0 nodes
+Adjoining Gate Add Runtime: 0.000000
+Total Adjoining Gate Inputs Reduced: 0
+Final PIs: 356
+Final POs: 123
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/c5315/SLL/c5315_SLL.bench:
+Scan Time: 2.703125
+PIs: 409
+POs: 123
+Total nodes in circuit: 2975
+Nodes visited: 381
+Nodes leaking key information: 243
+abc 02> run
+
+Added adjoining gates to 243 nodes
+Adjoining Gate Add Runtime: 1.531250
+Total Adjoining Gate Inputs Reduced: 261
+Final PIs: 409
+Final POs: 366
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/des/AntiSAT/des_BA16_gate_level_final.v.bench:
+Scan Time: 1.437500
+PIs: 624
+POs: 245
+Total nodes in circuit: 5734
+Nodes visited: 0
+Nodes leaking key information: 0
+abc 02> run
+
+Added adjoining gates to 0 nodes
+Adjoining Gate Add Runtime: 0.000000
+Total Adjoining Gate Inputs Reduced: 0
+Final PIs: 624
+Final POs: 245
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/des/Full-Lock/des_locked_40_40_gate_level_final.v.bench:
+Scan Time: 8.343750
+PIs: 796
+POs: 245
+Total nodes in circuit: 7794
+Nodes visited: 128
+Nodes leaking key information: 86
+abc 02> run
+
+Added adjoining gates to 86 nodes
+Adjoining Gate Add Runtime: 3.515625
+Total Adjoining Gate Inputs Reduced: 151
+Final PIs: 796
+Final POs: 331
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/des/SFLL/des_SFLL_256_gate_level_final.v.benchfix:
+Scan Time: 1.250000
+PIs: 512
+POs: 245
+Total nodes in circuit: 5813
+Nodes visited: 8
+Nodes leaking key information: 0
+abc 02> run
+
+Added adjoining gates to 0 nodes
+Adjoining Gate Add Runtime: 0.000000
+Total Adjoining Gate Inputs Reduced: 0
+Final PIs: 512
+Final POs: 245
+abc 02> quit
+
+
+Scanned ./probing_benchmarks/des/SLL/des_SLL.bench:
+Scan Time: 11.171875
+PIs: 512
+POs: 245
+Total nodes in circuit: 6341
+Nodes visited: 1152
+Nodes leaking key information: 982
+abc 02> run
+
+Added adjoining gates to 982 nodes
+Adjoining Gate Add Runtime: 27.562500
+Total Adjoining Gate Inputs Reduced: 1689
+Final PIs: 512
+Final POs: 1227
+abc 02> quit
+
+

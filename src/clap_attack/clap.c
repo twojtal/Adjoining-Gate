@@ -784,7 +784,7 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
 
       //printf("Adjoining Gate %s added.\n", Abc_ObjName(newNode));
       //printf("Change in PIs from reduction: %d (initial) to %d (final).\n", nonKIFs, PIarrCtr);
-      return PIarrCtr;
+      return nonKIFs - PIarrCtr;
     }
   }
   printf("\nFailed: node %s not found in the network.\n", targetNode);
@@ -795,7 +795,7 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
 {
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
-  int i = 0, nodeCtr = 0, PIcounter=0, ;
+  int i = 0, nodeCtr = 0, AGpiCtr = 0;
 
   // Variables for timing
   clock_t start_time, end_time;
@@ -814,12 +814,30 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
   {
     if(pNode->leaks)
     {
-      PIcounter += AdjoiningGate_AddNode(pAbc, Abc_ObjName(pNode), gateType);
+      AGpiCtr += AdjoiningGate_AddNode(pAbc, Abc_ObjName(pNode), gateType);
       nodeCtr++;
     }
   }
-  printf("Added adjoining gates to %d node(s).\n",nodeCtr);
-  printf("Adjoining Gate Add Runtime: %d", );
+  end_time = clock();
+  cpu_time_used = ((double) (end_time - start_time)) / CLOCKS_PER_SEC;
+  Abc_Obj_t *obj;
+  int PIctr = 0, POctr = 0;
+  i = 0;
+  Abc_NtkForEachPi(pNtk, obj, i)
+  {
+    PIctr++;
+  }
+  i = 0;
+  Abc_NtkForEachPo(pNtk, obj, i)
+  {
+    POctr++;
+  }
+  printf("\nAdded adjoining gates to %d nodes\n",nodeCtr);
+  printf("Adjoining Gate Add Runtime: %f\n", cpu_time_used);
+  printf("Total Adjoining Gate Inputs Reduced: %d\n", AGpiCtr);
+  printf("Final PIs: %d\n", PIctr);
+  printf("Final POs: %d\n", POctr);
+  
   return 1;
 }
 

@@ -1,0 +1,17 @@
+Benchmark Path,Scan Time,PIs,POs,Total Nodes,Nodes Visited,Nodes Leaking,Added Nodes,Add Runtime,Total PIs Reduced,Final PIs,Final POs
+./probing_benchmarks/b14/AntiSAT/b14_BA16_gate_level_final.v.bench,6.000000,681,245,7607,542,191,191,2.671875,104,681,436
+./probing_benchmarks/b14/Full-Lock/b14_locked_40_40_gate_level_final.v.bench,17.359375,817,245,9715,611,358,358,2.812500,20,817,603
+./probing_benchmarks/b14/SFLL/b14_SFLL_277_gate_level_final.v.benchfix,4.093750,554,245,7742,583,180,180,1.171875,23,554,425
+./probing_benchmarks/b14/SLL/b14_SLL.bench,3.968750,533,245,7395,247,122,122,15.234375,70,533,367
+./probing_benchmarks/c1908/AntiSAT/c1908_BA16.bench,1.390625,111,25,803,277,55,55,0.859375,68,111,80
+./probing_benchmarks/c1908/Full-Lock/c1908_locked_32_32_gate_level_final.v.bench,2.218750,417,25,2501,468,275,275,2.187500,47,417,300
+./probing_benchmarks/c1908/SFLL/c1908_33_gate_level_final.v.bench,0.312500,66,25,1029,72,5,5,0.093750,5,66,30
+./probing_benchmarks/c1908/SLL/c1908_SLL.bench,0.781250,121,25,654,189,122,122,4.109375,181,121,147
+./probing_benchmarks/c5315/AntiSAT/c5315_BA16_gate_level_final.v.bench,4.671875,334,123,2401,1094,762,762,8.406250,585,334,885
+./probing_benchmarks/c5315/Full-Lock/c5315_locked_40_40_gate_level_final.v.bench,4.406250,718,123,5129,624,330,330,1.703125,8,718,453
+./probing_benchmarks/c5315/SFLL/c5315_SFLL_178_gate_level_final.v.bench,0.937500,356,123,810,408,171,171,1.140625,55,356,294
+./probing_benchmarks/c5315/SLL/c5315_SLL.bench,5.421875,409,123,2975,1140,921,921,35.203125,1110,409,1044
+./probing_benchmarks/des/AntiSAT/des_BA16_gate_level_final.v.bench,2.328125,624,245,5734,523,138,138,0.781250,32,624,383
+./probing_benchmarks/des/Full-Lock/des_locked_40_40_gate_level_final.v.bench,4.734375,796,245,7794,598,339,339,33.734375,258,796,584
+./probing_benchmarks/des/SFLL/des_SFLL_256_gate_level_final.v.benchfix,2.000000,512,245,5813,518,134,134,0.687500,0,512,379
+./probing_benchmarks/des/SLL/des_SLL.bench,21.812500,512,245,6341,3718,3365,3365,191.531250,5071,512,3610
