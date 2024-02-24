@@ -38,7 +38,7 @@ int ClapAttack_ClapAttackAbc(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int 
 int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg, int keysConsideredCutoff, float keyElimCutoff, int probeResolutionSize, int grouped, int listAdjOrder);
 int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping , float scanTime);
 int AdjoiningGate_BFS(Abc_Frame_t *pAbc, int group_size);
-int AdjoiningGate_AddNode(Abc_Frame_t *pAbc, char *targetNode, int gateType);
+int AdjoiningGate_AddNode(Abc_Frame_t *pAbc, char *targetNode, int gateType, int *totPIpre, int *totPIpost);
 int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType);
 int AdjoiningGate_UpdateGateTypes(Abc_Frame_t *pAbc);
 void ClapAttack_TraversalRecursive(Abc_Ntk_t *pNtk, Abc_Obj_t *pCurNode, struct BSI_KeyData_t *pGlobalBsiKeys, int *pOracleKey, int MaxKeysConsidered, Abc_Ntk_t **ppCurKeyCnf, int *pTotalProbes, int probeResolutionSize);
@@ -339,6 +339,7 @@ int ClapAttack_ClapAttack(Abc_Frame_t *pAbc, char *pKey, char *pOutFile, int alg
   end_time = clock();
   cpu_time_used = ((double) (end_time - start_time)) / CLOCKS_PER_SEC;
   
+
   return AdjoiningGate_ListNetwork(pAbc, listAdjOrder, cpu_time_used); // List the network
 }
 
@@ -358,9 +359,21 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping , float scanTim
 
   AdjoiningGate_UpdateGateTypes(pAbc); // Update the gate types
 
-  printf("Network List:\n");
-  if(aGrouping)
+  if(aGrouping == -1)
   {
+    Abc_NtkForEachNode(pNtk, pNode, i)
+    {
+      if(pNode->leaks)
+      {
+        NodesLeaking++;
+      }
+    }
+    printf("Number of nodes leaking key information: %d\n", NodesLeaking);
+    return 1;
+  }
+  else if(aGrouping == 1)
+  {
+    printf("Network List:\n");
 		// Update the highest tag (this needs to be here)
     highestTag = 0;
     Abc_NtkForEachNode( pNtk, pNode, i )
@@ -442,6 +455,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping , float scanTim
   }
   else
   {
+    printf("Network List:\n");
     Abc_NtkForEachNode( pNtk, pNode, i )
     {
       printf("Node %s:\t", Abc_ObjName(pNode));
@@ -567,7 +581,7 @@ int AdjoiningGate_BFS( Abc_Frame_t * pAbc, int group_size)
 }
 
 // Adds a blank node to the network
-int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
+int AdjoiningGate_AddNode(Abc_Frame_t *pAbc, char *targetNode, int gateType, int *totPIpre, int *totPIpost)
 {
   Abc_Ntk_t *pNtk, *pNtkCone, *pNtkMiter;
   Abc_Obj_t *newNode, *newNodeInv, *newPo, *pNode, *pPi, *pPiSource;
@@ -784,6 +798,9 @@ int AdjoiningGate_AddNode( Abc_Frame_t * pAbc, char * targetNode, int gateType )
 
       //printf("Adjoining Gate %s added.\n", Abc_ObjName(newNode));
       //printf("Change in PIs from reduction: %d (initial) to %d (final).\n", nonKIFs, PIarrCtr);
+      *totPIpre += nonKIFs;
+      *totPIpost += PIarrCtr;
+
       return nonKIFs - PIarrCtr;
     }
   }
@@ -795,7 +812,8 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
 {
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
-  int i = 0, nodeCtr = 0, AGpiCtr = 0;
+  int i = 0, nodeCtr = 0, AGpiCtr = 0, totPIpre = 0, totPIpost = 0;
+  double avgPIpre, avgPIpost;
 
   // Variables for timing
   clock_t start_time, end_time;
@@ -814,7 +832,7 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
   {
     if(pNode->leaks)
     {
-      AGpiCtr += AdjoiningGate_AddNode(pAbc, Abc_ObjName(pNode), gateType);
+      AGpiCtr += AdjoiningGate_AddNode(pAbc, Abc_ObjName(pNode), gateType, &totPIpre, &totPIpost);
       nodeCtr++;
     }
   }
@@ -832,9 +850,25 @@ int AdjoiningGate_Run(Abc_Frame_t *pAbc, int gateType)
   {
     POctr++;
   }
+
+  //Calculating Averages
+  if(nodeCtr>0)
+  {
+    avgPIpre = (double)totPIpre/nodeCtr;
+    avgPIpost = (double)totPIpost/nodeCtr;
+  }
+  else
+  {
+    avgPIpre = 0;
+    avgPIpost = 0;
+  }
+
   printf("\nAdded adjoining gates to %d nodes\n",nodeCtr);
   printf("Adjoining Gate Add Runtime: %f\n", cpu_time_used);
   printf("Total Adjoining Gate Inputs Reduced: %d\n", AGpiCtr);
+  printf("Pre-Reduction Inputs per AG: %f\n", avgPIpre);
+  printf("Post-Reduction Inputs per AG: %f\n", avgPIpost);
+  printf("Average Fanins Reduced: %f\n", (avgPIpre-avgPIpost));
   printf("Final PIs: %d\n", PIctr);
   printf("Final POs: %d\n", POctr);
   

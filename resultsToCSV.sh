@@ -27,19 +27,23 @@ awk -F ': ' '/^Scanned/ {benchmark_path = $1; scanned_found = 1; next}
                 else if (/^Added adjoining gates to/) {added_gates = $NF; gsub(/[^0-9]/, "", added_gates)}
                 else if (/^Adjoining Gate Add Runtime/) {add_runtime = $2}
                 else if (/^Total Adjoining Gate Inputs Reduced/) {pi_reduction = $2}
+                else if (/^Pre-Reduction Inputs per AG/) {avg_pi_pre = $2}
+                else if (/^Post-Reduction Inputs per AG/) {avg_pi_post = $2}
+                else if (/^Average Fanins Reduced/) {avg_pi = $2}
                 else if (/^Final PIs/) {final_pis = $2}
                 else if (/^Final POs/) {final_pos = $2}
+                else if (/^Number of nodes leaking key information/) {final_leaking = $2}
                 else if (/^[a-zA-Z0-9_]+ [0-9]+>[[:space:]]*quit/) {
                     if (!header_printed) {
-                        print "Benchmark Path,Scan Time,PIs,POs,Total Nodes,Nodes Visited,Nodes Leaking,Added Nodes,Add Runtime,Total PIs Reduced,Final PIs,Final POs";
+                        print "Benchmark Path,Scan Time,PIs,POs,Total Nodes,Nodes Visited,Nodes Leaking,Added Nodes,Add Runtime,Total PIs Reduced,Pre-Reduction Inputs per AG,Post-Reduction Inputs per AG,Average PIs Reduced,Final PIs,Final POs,Final Nodes Leaking";
                         header_printed = 1;
                     }
-                    print benchmark_path "," scan_time "," pis "," pos "," total_nodes "," nodes_visited "," nodes_leaking "," added_gates "," add_runtime "," pi_reduction "," final_pis "," final_pos;
+                    print benchmark_path "," scan_time "," pis "," pos "," total_nodes "," nodes_visited "," nodes_leaking "," added_gates "," add_runtime "," pi_reduction "," avg_pi_pre "," avg_pi_post "," avg_pi "," final_pis "," final_pos "," final_leaking;
                     scanned_found = 0;
                 }
             }
             } END { if (header_printed == 0) { 
-                    print "Benchmark Path,Scan Time,PIs,POs,Total Nodes,Nodes Visited,Nodes Leaking,Added Nodes,Add Runtime,Total PIs Reduced,Final PIs,Final POs";
+                    print "Benchmark Path,Scan Time,PIs,POs,Total Nodes,Nodes Visited,Nodes Leaking,Added Nodes,Add Runtime,Total PIs Reduced,Pre-Reduction Inputs per AG,Post-Reduction Inputs per AG,Average PIs Reduced,Final PIs,Final POs, Final Nodes Leaking";
                 }
             }' "$input_file" > "$output_file"
 

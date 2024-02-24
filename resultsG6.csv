@@ -1,17 +1,17 @@
-Benchmark Path,Scan Time,PIs,POs,Total Nodes,Nodes Visited,Nodes Leaking,Added Nodes,Add Runtime,Total PIs Reduced,Final PIs,Final POs
-./probing_benchmarks/b14/AntiSAT/b14_BA16_gate_level_final.v.bench,5.437500,681,245,7607,147,15,15,0.078125,12,681,260
-./probing_benchmarks/b14/Full-Lock/b14_locked_40_40_gate_level_final.v.bench,19.500000,817,245,9715,381,157,157,0.812500,19,817,402
-./probing_benchmarks/b14/SFLL/b14_SFLL_277_gate_level_final.v.benchfix,3.484375,554,245,7742,286,6,6,0.031250,3,554,251
-./probing_benchmarks/b14/SLL/b14_SLL.bench,3.937500,533,245,7395,68,43,43,1.875000,10,533,288
-./probing_benchmarks/c1908/AntiSAT/c1908_BA16.bench,1.140625,111,25,803,101,13,13,0.109375,18,111,38
-./probing_benchmarks/c1908/Full-Lock/c1908_locked_32_32_gate_level_final.v.bench,4.187500,417,25,2501,225,65,65,0.218750,47,417,90
-./probing_benchmarks/c1908/SFLL/c1908_33_gate_level_final.v.bench,0.390625,66,25,1029,72,5,5,0.093750,5,66,30
-./probing_benchmarks/c1908/SLL/c1908_SLL.bench,0.687500,121,25,654,100,44,44,0.250000,49,121,69
-./probing_benchmarks/c5315/AntiSAT/c5315_BA16_gate_level_final.v.bench,2.296875,334,123,2401,357,169,169,0.859375,171,334,292
-./probing_benchmarks/c5315/Full-Lock/c5315_locked_40_40_gate_level_final.v.bench,7.281250,718,123,5129,308,57,57,0.203125,4,718,180
-./probing_benchmarks/c5315/SFLL/c5315_SFLL_178_gate_level_final.v.bench,0.531250,356,123,810,196,10,10,0.046875,4,356,133
-./probing_benchmarks/c5315/SLL/c5315_SLL.bench,3.546875,409,123,2975,563,396,396,3.953125,448,409,519
-./probing_benchmarks/des/AntiSAT/des_BA16_gate_level_final.v.bench,1.515625,624,245,5734,58,0,0,0.000000,0,624,245
-./probing_benchmarks/des/Full-Lock/des_locked_40_40_gate_level_final.v.bench,8.453125,796,245,7794,390,156,156,6.687500,292,796,401
-./probing_benchmarks/des/SFLL/des_SFLL_256_gate_level_final.v.benchfix,1.531250,512,245,5813,263,3,3,0.015625,0,512,248
-./probing_benchmarks/des/SLL/des_SLL.bench,14.953125,512,245,6341,1715,1532,1532,48.546875,3027,512,1777
+Benchmark Path,Scan Time,PIs,POs,Total Nodes,Nodes Visited,Nodes Leaking,Added Nodes,Add Runtime,Total PIs Reduced,Pre-Reduction Inputs per AG,Post-Reduction Inputs per AG,Average PIs Reduced,Final PIs,Final POs,Final Nodes Leaking
+./probing_benchmarks/b14/AntiSAT/b14_BA16_gate_level_final.v.bench,8.843750,681,245,7607,147,15,15,0.109375,12,2.000000,1.200000,0.800000,681,260,0
+./probing_benchmarks/b14/Full-Lock/b14_locked_40_40_gate_level_final.v.bench,37.656250,817,245,9715,381,157,157,1.359375,19,2.127389,2.006369,0.121019,817,402,0
+./probing_benchmarks/b14/SFLL/b14_SFLL_277_gate_level_final.v.benchfix,5.484375,554,245,7742,286,6,6,0.046875,3,2.333333,1.833333,0.500000,554,251,0
+./probing_benchmarks/b14/SLL/b14_SLL.bench,6.171875,533,245,7395,68,43,43,2.140625,10,10.744186,10.511628,0.232558,533,288,0
+./probing_benchmarks/c1908/AntiSAT/c1908_BA16.bench,1.203125,111,25,803,101,13,13,0.125000,18,3.307692,1.923077,1.384615,111,38,0
+./probing_benchmarks/c1908/Full-Lock/c1908_locked_32_32_gate_level_final.v.bench,5.406250,417,25,2501,225,65,65,0.312500,47,2.400000,1.676923,0.723077,417,90,0
+./probing_benchmarks/c1908/SFLL/c1908_33_gate_level_final.v.bench,0.531250,66,25,1029,72,5,5,0.140625,5,5.000000,4.000000,1.000000,66,30,0
+./probing_benchmarks/c1908/SLL/c1908_SLL.bench,0.968750,121,25,654,100,44,44,0.343750,49,2.568182,1.454545,1.113636,121,69,0
+./probing_benchmarks/c5315/AntiSAT/c5315_BA16_gate_level_final.v.bench,2.890625,334,123,2401,357,169,169,1.234375,171,2.295858,1.284024,1.011834,334,292,0
+./probing_benchmarks/c5315/Full-Lock/c5315_locked_40_40_gate_level_final.v.bench,11.781250,718,123,5129,308,57,57,0.343750,4,1.771930,1.701754,0.070175,718,180,0
+./probing_benchmarks/c5315/SFLL/c5315_SFLL_178_gate_level_final.v.bench,0.859375,356,123,810,196,10,10,0.031250,4,2.100000,1.700000,0.400000,356,133,0
+./probing_benchmarks/c5315/SLL/c5315_SLL.bench,4.578125,409,123,2975,563,396,396,5.609375,448,3.353535,2.222222,1.131313,409,519,0
+./probing_benchmarks/des/AntiSAT/des_BA16_gate_level_final.v.bench,1.937500,624,245,5734,58,0,0,0.000000,0,0.000000,0.000000,0.000000,624,245,0
+./probing_benchmarks/des/Full-Lock/des_locked_40_40_gate_level_final.v.bench,11.515625,796,245,7794,390,156,156,9.281250,292,9.801282,7.929487,1.871795,796,401,0
+./probing_benchmarks/des/SFLL/des_SFLL_256_gate_level_final.v.benchfix,2.125000,512,245,5813,263,3,3,0.015625,0,2.000000,2.000000,0.000000,512,248,0
+./probing_benchmarks/des/SLL/des_SLL.bench,18.984375,512,245,6341,1715,1532,1532,76.062500,3027,7.580940,5.605091,1.975849,512,1777,0

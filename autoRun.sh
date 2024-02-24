@@ -13,11 +13,12 @@ read_bench "$file"
 bfs -g $resolution
 scan -g -a
 run
+scan -g -p
 quit
 EOF
         echo "Scanned $file:" >> "$output_file"
-        tail -n 14 "$temp_output" >> "$output_file"
-        tail -n 14 "$temp_output"
+        tail -n 25 "$temp_output" >> "$output_file"
+        tail -n 25 "$temp_output"
         rm "$temp_output"
         echo "Scan Complete"
         echo -e "\n" >> "$output_file"

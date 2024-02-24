@@ -31,12 +31,15 @@ int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
 
   // get arguments
   Extra_UtilGetoptReset();
-  while ((c = Extra_UtilGetopt(argc, argv, "agclovrh")) != EOF)
+  while ((c = Extra_UtilGetopt(argc, argv, "apgclovrh")) != EOF)
   {
     switch (c)
     {
     case 'a':
       listAdjOrder = 1;
+      break;
+    case 'p':
+      listAdjOrder = -1;
       break;
     case 'g':
       grouped = 1;
@@ -137,6 +140,7 @@ int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
     Abc_Print(-2, "usage: scan [-clovrh] -k <key> \n");
     Abc_Print(-2, "\t           The physical portion of the CLAP attack in ABC.\n");
     Abc_Print(-2, "\t-a         : list nodes in adjacency tag order \n");
+    Abc_Print(-2, "\t-p         : prints only the leakage of the network\n");
     Abc_Print(-2, "\t-g         : scan the groups based on adjacency tag (network must first be BFS grouped)\n");
     Abc_Print(-2, "\t-k <key>   : input the correct oracle key value for EOFM probing simulation \n");
     Abc_Print(-2, "\t-m         : use multi-node probing algorithm (alg. 2) for CLAP attack, omitting this command uses fixed EOFM probe algorithm (alg. 1)\n");
@@ -159,10 +163,13 @@ static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **ar
 
   // get arguments
   Extra_UtilGetoptReset();
-  while ((c = Extra_UtilGetopt(argc, argv, "avh")) != EOF) {
+  while ((c = Extra_UtilGetopt(argc, argv, "apvh")) != EOF) {
     switch (c) {
     case 'a':
       aGrouping = 1;
+      break;
+    case 'p':
+      aGrouping = -1;
       break;
     case 'v':
       fVerbose ^= 1;
@@ -201,6 +208,7 @@ static int AdjoiningGate_ListNetwork_CMD( Abc_Frame_t * pAbc, int argc, int **ar
     Abc_Print(-2, "usage: list [-vh]\n");
     Abc_Print(-2, "\t           List all the nodes in the network.\n");
     Abc_Print(-2, "\t-a         : list nodes in adjacency tag order \n");
+    Abc_Print(-2, "\t-p         : prints only the leakage of the network\n");
     Abc_Print(-2, "\t-v         : toggle printing verbose information [default = %s]\n", fVerbose ? "yes" : "no");
     Abc_Print(-2, "\t-h         : print the command usage \n");
   return 1;
@@ -276,6 +284,7 @@ int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
   int c, result, gateType;
   char * addNode = NULL;
   char * gate = NULL;
+  int totPIpre = 0, totPIpost = 0;
 
   // set defaults
   fVerbose = 0;
@@ -355,7 +364,7 @@ int AdjoiningGate_AddNode_CMD(Abc_Frame_t * pAbc, int argc, int ** argv)
   }
   
   // call the main function
-  result = AdjoiningGate_AddNode( pAbc, addNode , gateType);
+  result = AdjoiningGate_AddNode( pAbc, addNode , gateType, &totPIpre, &totPIpost);
 
   // print verbose information if the verbose mode is on
   if (fVerbose) {
