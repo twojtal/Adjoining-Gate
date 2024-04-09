@@ -347,7 +347,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping , float scanTim
 {
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
-  int i = 0, NodesVisited = 0, NodesLeaking = 0, TotalNumNodes = 0;
+  int i = 0, NodesVisited = 0, NodesLeaking = 0, TotalNumNodes = 0, TotLeakageDepth = 0;
 
   // Get the network that is read into ABC
   pNtk = Abc_FrameReadNtk(pAbc);
@@ -438,6 +438,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping , float scanTim
           {
             printf("Leaks = true,\t");
             NodesLeaking++;
+            TotLeakageDepth += Abc_ObjLevel(pNode);
           }
           else
           {
@@ -506,6 +507,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping , float scanTim
       {
         printf("Leaks = true,\t");
         NodesLeaking++;
+        TotLeakageDepth += Abc_ObjLevel(pNode);
       }
       else
       {
@@ -538,6 +540,15 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping , float scanTim
   printf("Total nodes in circuit: %d\n", TotalNumNodes);
   printf("Nodes visited: %d\n", NodesVisited);
   printf("Nodes leaking key information: %d\n", NodesLeaking);
+  printf("Groups in circuit: %d\n", highestTag);
+  if(NodesLeaking == 0)
+  {
+    printf("Average leakage depth: 0.000000\n");
+  }
+  else
+  {
+    printf("Average leakage depth: %f\n", ((float)TotLeakageDepth/(float)NodesLeaking));
+  }
   
   return 1;
 }
