@@ -31,10 +31,19 @@ int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
 
   // get arguments
   Extra_UtilGetoptReset();
-  while ((c = Extra_UtilGetopt(argc, argv, "apgclovrh")) != EOF)
+  while ((c = Extra_UtilGetopt(argc, argv, "apgkclovrh")) != EOF)
   {
     switch (c)
     {
+    case 'k':
+      if (globalUtilOptind >= argc)
+      {
+          Abc_Print(-1,"Command line switch \"-k\" must be followed by a key string.\n");
+          goto usage;
+      }
+      pKey = argv[globalUtilOptind];
+      globalUtilOptind++;
+      break;
     case 'a':
       listAdjOrder = 1;
       break;
@@ -137,18 +146,17 @@ int AdjoiningGate_ScanLeakage_CMD(Abc_Frame_t *pAbc, int argc, int **argv)
   return 0;
 
   usage:
-    Abc_Print(-2, "usage: scan [-clovrh] -k <key> \n");
+    Abc_Print(-2, "usage: scan [-apgkclovrh] \n");
     Abc_Print(-2, "\t           The physical portion of the CLAP attack in ABC.\n");
     Abc_Print(-2, "\t-a         : list nodes in adjacency tag order \n");
     Abc_Print(-2, "\t-p         : prints only the leakage of the network\n");
     Abc_Print(-2, "\t-g         : scan the groups based on adjacency tag (network must first be BFS grouped)\n");
     Abc_Print(-2, "\t-k <key>   : input the correct oracle key value for EOFM probing simulation \n");
-    Abc_Print(-2, "\t-m         : use multi-node probing algorithm (alg. 2) for CLAP attack, omitting this command uses fixed EOFM probe algorithm (alg. 1)\n");
     Abc_Print(-2, "\t-c <int>   : maximum number of key inputs for a node to be considered for EOFM probing [default = 7]\n");
     Abc_Print(-2, "\t-l <float> : minimum portion of keyspace that must be eliminated for a multi-node probe to be run [default = 0.006125]\n");
     Abc_Print(-2, "\t-o <str>   : set name of SAT solver output file from physical portion of CLAP attack [default = \"physical_clap_out.bench\"]\n");
-    Abc_Print(-2, "\t-r <int>   : set the probe resolution size [default = 1]\n");
     Abc_Print(-2, "\t-v         : toggle printing verbose information [default = %s]\n", fVerbose ? "yes" : "no");
+    Abc_Print(-2, "\t-r <int>   : set the probe resolution size [default = 1]\n");
     Abc_Print(-2, "\t-h         : print the command usage \n");
   return 1;
 }

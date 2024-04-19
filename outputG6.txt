@@ -1,5 +1,5 @@
 Scanned ./probing_benchmarks/b14/AntiSAT/b14_BA16_gate_level_final.v.bench:
-Scan Time: 5.859375
+Scan Time: 5.703125
 PIs: 681
 POs: 245
 Total nodes in circuit: 7607
@@ -7,10 +7,11 @@ Nodes visited: 147
 Nodes leaking key information: 15
 Groups in circuit: 1268
 Average leakage depth: 4.000000
+Average node depth: 89.557251
 abc 02> run
 
 Added adjoining gates to 15 nodes
-Adjoining Gate Add Runtime: 0.093750
+Adjoining Gate Add Runtime: 0.078125
 Total Adjoining Gate Inputs Reduced: 12
 Pre-Reduction Inputs per AG: 2.000000
 Post-Reduction Inputs per AG: 1.200000
@@ -29,7 +30,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/b14/Full-Lock/b14_locked_40_40_gate_level_final.v.bench:
-Scan Time: 22.687500
+Scan Time: 21.140625
 PIs: 817
 POs: 245
 Total nodes in circuit: 9715
@@ -37,10 +38,11 @@ Nodes visited: 381
 Nodes leaking key information: 157
 Groups in circuit: 1620
 Average leakage depth: 3.878981
+Average node depth: 87.547089
 abc 02> run
 
 Added adjoining gates to 157 nodes
-Adjoining Gate Add Runtime: 0.953125
+Adjoining Gate Add Runtime: 0.859375
 Total Adjoining Gate Inputs Reduced: 19
 Pre-Reduction Inputs per AG: 2.127389
 Post-Reduction Inputs per AG: 2.006369
@@ -59,7 +61,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/b14/SFLL/b14_SFLL_277_gate_level_final.v.benchfix:
-Scan Time: 3.781250
+Scan Time: 3.843750
 PIs: 554
 POs: 245
 Total nodes in circuit: 7742
@@ -67,6 +69,7 @@ Nodes visited: 286
 Nodes leaking key information: 6
 Groups in circuit: 1291
 Average leakage depth: 3.333333
+Average node depth: 54.494186
 abc 02> run
 
 Added adjoining gates to 6 nodes
@@ -89,7 +92,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/b14/SLL/b14_SLL.bench:
-Scan Time: 4.203125
+Scan Time: 3.953125
 PIs: 533
 POs: 245
 Total nodes in circuit: 7395
@@ -97,10 +100,11 @@ Nodes visited: 68
 Nodes leaking key information: 43
 Groups in circuit: 1233
 Average leakage depth: 17.325581
+Average node depth: 109.951180
 abc 02> run
 
 Added adjoining gates to 43 nodes
-Adjoining Gate Add Runtime: 1.562500
+Adjoining Gate Add Runtime: 1.625000
 Total Adjoining Gate Inputs Reduced: 10
 Pre-Reduction Inputs per AG: 10.744186
 Post-Reduction Inputs per AG: 10.511628
@@ -119,7 +123,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/c1908/AntiSAT/c1908_BA16.bench:
-Scan Time: 0.953125
+Scan Time: 0.875000
 PIs: 111
 POs: 25
 Total nodes in circuit: 803
@@ -127,6 +131,7 @@ Nodes visited: 101
 Nodes leaking key information: 13
 Groups in circuit: 134
 Average leakage depth: 4.384615
+Average node depth: 13.869241
 abc 02> run
 
 Added adjoining gates to 13 nodes
@@ -149,7 +154,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/c1908/Full-Lock/c1908_locked_32_32_gate_level_final.v.bench:
-Scan Time: 3.906250
+Scan Time: 3.843750
 PIs: 417
 POs: 25
 Total nodes in circuit: 2501
@@ -157,6 +162,7 @@ Nodes visited: 225
 Nodes leaking key information: 65
 Groups in circuit: 417
 Average leakage depth: 4.584615
+Average node depth: 27.069971
 abc 02> run
 
 Added adjoining gates to 65 nodes
@@ -179,7 +185,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/c1908/SFLL/c1908_33_gate_level_final.v.bench:
-Scan Time: 0.421875
+Scan Time: 0.390625
 PIs: 66
 POs: 25
 Total nodes in circuit: 1029
@@ -187,6 +193,7 @@ Nodes visited: 72
 Nodes leaking key information: 5
 Groups in circuit: 172
 Average leakage depth: 6.000000
+Average node depth: 10.582119
 abc 02> run
 
 Added adjoining gates to 5 nodes
@@ -209,7 +216,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/c1908/SLL/c1908_SLL.bench:
-Scan Time: 0.687500
+Scan Time: 0.718750
 PIs: 121
 POs: 25
 Total nodes in circuit: 654
@@ -217,10 +224,11 @@ Nodes visited: 100
 Nodes leaking key information: 44
 Groups in circuit: 109
 Average leakage depth: 4.204545
+Average node depth: 23.100918
 abc 02> run
 
 Added adjoining gates to 44 nodes
-Adjoining Gate Add Runtime: 0.265625
+Adjoining Gate Add Runtime: 0.250000
 Total Adjoining Gate Inputs Reduced: 49
 Pre-Reduction Inputs per AG: 2.568182
 Post-Reduction Inputs per AG: 1.454545
@@ -239,7 +247,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/c5315/AntiSAT/c5315_BA16_gate_level_final.v.bench:
-Scan Time: 2.390625
+Scan Time: 2.328125
 PIs: 334
 POs: 123
 Total nodes in circuit: 2401
@@ -247,10 +255,11 @@ Nodes visited: 357
 Nodes leaking key information: 169
 Groups in circuit: 401
 Average leakage depth: 3.881657
+Average node depth: 13.765098
 abc 02> run
 
 Added adjoining gates to 169 nodes
-Adjoining Gate Add Runtime: 0.875000
+Adjoining Gate Add Runtime: 0.843750
 Total Adjoining Gate Inputs Reduced: 171
 Pre-Reduction Inputs per AG: 2.295858
 Post-Reduction Inputs per AG: 1.284024
@@ -269,7 +278,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/c5315/Full-Lock/c5315_locked_40_40_gate_level_final.v.bench:
-Scan Time: 8.671875
+Scan Time: 7.609375
 PIs: 718
 POs: 123
 Total nodes in circuit: 5129
@@ -277,10 +286,11 @@ Nodes visited: 308
 Nodes leaking key information: 57
 Groups in circuit: 855
 Average leakage depth: 4.403509
+Average node depth: 31.310781
 abc 02> run
 
 Added adjoining gates to 57 nodes
-Adjoining Gate Add Runtime: 0.281250
+Adjoining Gate Add Runtime: 0.234375
 Total Adjoining Gate Inputs Reduced: 4
 Pre-Reduction Inputs per AG: 1.771930
 Post-Reduction Inputs per AG: 1.701754
@@ -299,7 +309,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/c5315/SFLL/c5315_SFLL_178_gate_level_final.v.bench:
-Scan Time: 0.656250
+Scan Time: 0.625000
 PIs: 356
 POs: 123
 Total nodes in circuit: 810
@@ -307,10 +317,11 @@ Nodes visited: 196
 Nodes leaking key information: 10
 Groups in circuit: 135
 Average leakage depth: 3.200000
+Average node depth: 3.651852
 abc 02> run
 
 Added adjoining gates to 10 nodes
-Adjoining Gate Add Runtime: 0.046875
+Adjoining Gate Add Runtime: 0.062500
 Total Adjoining Gate Inputs Reduced: 4
 Pre-Reduction Inputs per AG: 2.100000
 Post-Reduction Inputs per AG: 1.700000
@@ -329,7 +340,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/c5315/SLL/c5315_SLL.bench:
-Scan Time: 4.093750
+Scan Time: 3.843750
 PIs: 409
 POs: 123
 Total nodes in circuit: 2975
@@ -337,10 +348,11 @@ Nodes visited: 563
 Nodes leaking key information: 396
 Groups in circuit: 496
 Average leakage depth: 5.601010
+Average node depth: 13.836303
 abc 02> run
 
 Added adjoining gates to 396 nodes
-Adjoining Gate Add Runtime: 4.937500
+Adjoining Gate Add Runtime: 4.562500
 Total Adjoining Gate Inputs Reduced: 448
 Pre-Reduction Inputs per AG: 3.353535
 Post-Reduction Inputs per AG: 2.222222
@@ -359,7 +371,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/des/AntiSAT/des_BA16_gate_level_final.v.bench:
-Scan Time: 1.890625
+Scan Time: 1.593750
 PIs: 624
 POs: 245
 Total nodes in circuit: 5734
@@ -367,6 +379,7 @@ Nodes visited: 58
 Nodes leaking key information: 0
 Groups in circuit: 956
 Average leakage depth: 0.000000
+Average node depth: 16.438437
 abc 02> run
 
 Added adjoining gates to 0 nodes
@@ -389,7 +402,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/des/Full-Lock/des_locked_40_40_gate_level_final.v.bench:
-Scan Time: 10.218750
+Scan Time: 8.953125
 PIs: 796
 POs: 245
 Total nodes in circuit: 7794
@@ -397,10 +410,11 @@ Nodes visited: 390
 Nodes leaking key information: 156
 Groups in circuit: 1299
 Average leakage depth: 8.519231
+Average node depth: 18.945343
 abc 02> run
 
 Added adjoining gates to 156 nodes
-Adjoining Gate Add Runtime: 8.234375
+Adjoining Gate Add Runtime: 7.203125
 Total Adjoining Gate Inputs Reduced: 292
 Pre-Reduction Inputs per AG: 9.801282
 Post-Reduction Inputs per AG: 7.929487
@@ -419,7 +433,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/des/SFLL/des_SFLL_256_gate_level_final.v.benchfix:
-Scan Time: 1.859375
+Scan Time: 1.734375
 PIs: 512
 POs: 245
 Total nodes in circuit: 5813
@@ -427,6 +441,7 @@ Nodes visited: 263
 Nodes leaking key information: 3
 Groups in circuit: 969
 Average leakage depth: 3.000000
+Average node depth: 9.057974
 abc 02> run
 
 Added adjoining gates to 3 nodes
@@ -449,7 +464,7 @@ abc 02> quit
 
 
 Scanned ./probing_benchmarks/des/SLL/des_SLL.bench:
-Scan Time: 16.546875
+Scan Time: 14.718750
 PIs: 512
 POs: 245
 Total nodes in circuit: 6341
@@ -457,10 +472,11 @@ Nodes visited: 1715
 Nodes leaking key information: 1532
 Groups in circuit: 1057
 Average leakage depth: 8.889034
+Average node depth: 11.288282
 abc 02> run
 
 Added adjoining gates to 1532 nodes
-Adjoining Gate Add Runtime: 53.703125
+Adjoining Gate Add Runtime: 52.031250
 Total Adjoining Gate Inputs Reduced: 3027
 Pre-Reduction Inputs per AG: 7.580940
 Post-Reduction Inputs per AG: 5.605091

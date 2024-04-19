@@ -1,12 +1,12 @@
 //
-// Open-Source ABC Command for the Physical Portion of CLAP Attack
-// From: ICCAD'22, A Combined Logical and Physical Attack on Logic Obfuscation
-// Author: Michael Zuzak
-// Email: mjzeec@rit.edu
+// Open-Source Adjoining Gate System
+// From: Adjoining Gates: Mitigating Optical Side-Channel Attacks on Integrated Circuits through Security-Aware Placement
+// Author: Thomas Wojtal
+// Email: tsw4235@rit.edu
 //
-// Note that the logical portion of the CLAP attack relies on the
-// open-source SAT attack released by Pramod et al in Host'15
-// (Evaluating the Security of Logic Locking)
+// Note that the scanning components of the Adjoining Gate System relies on the 
+// open-source CLAP attack released by Zuzak et al in ICCAD'22
+// (A Combined Logical and Physical Attack on Logic Obfuscation)
 //
 
 #include "base/abc/abc.h"
@@ -347,7 +347,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping , float scanTim
 {
   Abc_Ntk_t *pNtk;
   Abc_Obj_t *pNode;
-  int i = 0, NodesVisited = 0, NodesLeaking = 0, TotalNumNodes = 0, TotLeakageDepth = 0;
+  int i = 0, NodesVisited = 0, NodesLeaking = 0, TotalNumNodes = 0, TotLeakageDepth = 0, TotDepth = 0;
 
   // Get the network that is read into ABC
   pNtk = Abc_FrameReadNtk(pAbc);
@@ -450,6 +450,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping , float scanTim
           printf("KIF = %d \t", pNode->KIF);
           printf("Adj. Tag = %d\n", pNode->adjTag);
           TotalNumNodes++;
+          TotDepth += Abc_ObjLevel(pNode);
         }
       }
     }
@@ -520,6 +521,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping , float scanTim
       printf("Adj. Tag = %d\n", pNode->adjTag);
       //Abc_ObjPrint(file, pNode); //This function can print the node to a file
       TotalNumNodes++;
+      TotDepth += Abc_ObjLevel(pNode);
     }
   }
   Abc_Obj_t *obj;
@@ -549,6 +551,7 @@ int AdjoiningGate_ListNetwork( Abc_Frame_t * pAbc, int aGrouping , float scanTim
   {
     printf("Average leakage depth: %f\n", ((float)TotLeakageDepth/(float)NodesLeaking));
   }
+  printf("Average node depth: %f\n", ((float)TotDepth/(float)TotalNumNodes));
   
   return 1;
 }

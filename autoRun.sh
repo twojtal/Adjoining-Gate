@@ -17,8 +17,8 @@ scan -g -p
 quit
 EOF
         echo "Scanned $file:" >> "$output_file"
-        tail -n 27 "$temp_output" >> "$output_file"
-        tail -n 27 "$temp_output"
+        tail -n 28 "$temp_output" >> "$output_file"
+        tail -n 28 "$temp_output"
         rm "$temp_output"
         echo "Scan Complete"
         echo -e "\n" >> "$output_file"
